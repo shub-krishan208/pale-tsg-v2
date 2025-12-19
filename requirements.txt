@@ -1,0 +1,11 @@
+asgiref==3.11.0
+cffi==2.0.0
+cryptography==46.0.3
+Django==6.0
+django-cors-headers==4.9.0
+djangorestframework==3.16.1
+psycopg2-binary==2.9.11
+pycparser==2.23
+PyJWT==2.10.1
+python-dotenv==1.2.1
+sqlparse==0.5.5

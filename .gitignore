@@ -1,0 +1,23 @@
+# dev
+mds
+.cursor/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+db.sqlite3
+
+# Django
+*.log
+local_settings.py
+
+# Keys
+backend/keys/*.pem
+backend/keys/private.*
+backend/keys/public.*
+
+# Environment
+.env*
