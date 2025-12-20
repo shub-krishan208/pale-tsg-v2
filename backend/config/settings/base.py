@@ -11,11 +11,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # __file__ is in config/settings/base.py, so we need 3x parent to get to backend/
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
-
+SHARED_DIR = BASE_DIR / 'shared'
+sys.path.insert(0, str(SHARED_DIR.parent))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/

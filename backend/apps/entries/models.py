@@ -1,4 +1,4 @@
-from django.db import models
+from shared.models import EntryLog, ExitLog
 
 
-# Entry and Exit log models will be implemented here
+__all__ = ['EntryLog', 'ExitLog']
