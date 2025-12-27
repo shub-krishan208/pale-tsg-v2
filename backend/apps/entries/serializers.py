@@ -8,10 +8,11 @@ class TokenGenerateRequestSerializer(serializers.Serializer):
     roll = serializers.CharField(max_length=50)
     laptop = serializers.CharField(max_length=150, required=False, allow_null=True, allow_blank=True)
     extra = serializers.ListField(
-        child=serializers.CharField(),
+        child=serializers.DictField(child=serializers.CharField()),
         required=False,
         allow_empty=True
-    )
+)
+
 
 class EntryLogSerializer(serializers.ModelSerializer):
     class Meta:

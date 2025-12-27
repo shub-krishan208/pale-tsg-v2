@@ -8,9 +8,11 @@ This module provides functions for:
 """
 
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, Any
+
+from core.exceptions import TokenVerificationError
 
 
 def load_private_key(key_path: str = None) -> str:
@@ -40,12 +42,12 @@ def generate_jwt_token(payload: Dict[str, Any], expiry_hours: int = 24) -> str:
         expiry_hours: Token expiration time in hours (default 24)
     
     Returns:
-        Signed JWT token string
+        Signed JWT token string (RS256)
     """
     private_key = load_private_key()
     
     # Add standard JWT claims
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     payload.update({
         'iss': 'library-backend',
         'aud': 'library-gate',
@@ -73,13 +75,20 @@ def verify_jwt_token(token: str) -> Dict[str, Any]:
     """
     public_key = load_public_key()
     
-    payload = jwt.decode(
-        token,
-        public_key,
-        algorithms=['RS256'],
-        audience='library-gate',
-        issuer='library-backend'
-    )
-    
-    return payload
+    try:
+        payload = jwt.decode(
+            token,
+            public_key,
+            algorithms=['RS256'],
+            audience='library-gate',
+            issuer='library-backend'
+        )
+        return payload
 
+    except jwt.ExpiredSignatureError:
+        # Token expired
+        raise TokenVerificationError("Token has expired")
+
+    except jwt.InvalidTokenError as e:
+        # Other invalid token errors
+        raise TokenVerificationError(f"Invalid token: {str(e)}")

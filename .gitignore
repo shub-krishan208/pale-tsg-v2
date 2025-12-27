@@ -15,9 +15,9 @@ db.sqlite3
 local_settings.py
 
 # Keys
-backend/keys/*.pem
-backend/keys/private.*
-backend/keys/public.*
+*/keys/*.pem
+*/keys/private.*
+*/keys/public.*
 
 # Environment
 .env*
