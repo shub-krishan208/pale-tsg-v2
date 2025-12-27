@@ -45,8 +45,8 @@ INSTALLED_APPS = [
     'corsheaders',
     
     # local partie
-    'apps.users',
-    'apps.entries',
+    'shared.apps.users',
+    'shared.apps.entries',
     'apps.sync',
 ]
 

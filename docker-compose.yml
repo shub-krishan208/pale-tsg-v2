@@ -17,5 +17,23 @@ services:
             timeout: 10s
             retries: 5
             start_period: 30s
+    postgres-gate:
+        image: postgres:16
+        container_name: pale-gate-db
+        ports:
+            - "54323:5432"
+        environment:
+            POSTGRES_DB: pale_gate_db
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres # can be changes later while deployment
+        volumes:
+            - postgres-gate-data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d pale_gate_db"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
 volumes:
     postgres-backend-data:
+    postgres-gate-data:
