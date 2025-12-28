@@ -17,19 +17,8 @@ INSTALLED_APPS = [
     # Minimal local apps (they import models from shared/)
     "shared.apps.users",
     "shared.apps.entries",
+    "scanner.apps.ScannerConfig",
 ]
-
-MIDDLEWARE = []
-
-ROOT_URLCONF = "config.urls"
-
-TEMPLATES = []
-
-WSGI_APPLICATION = "config.wsgi.application"
-
-DEBUG = True
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
 DATABASES = {
     'default': {
@@ -45,8 +34,3 @@ DATABASES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "UTC"
-
-# CORS for Next.js frontend
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-]

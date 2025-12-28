@@ -2,9 +2,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from backend.core.jwt_utils import generate_jwt_token, verify_jwt_token
+from backend.core.jwt_utils import generate_jwt_token
 from shared.models.entry_log import EntryLog
-from .serializers import EntryLogSerializer, TokenGenerateRequestSerializer
+from .serializers import TokenGenerateRequestSerializer
 
 @api_view(['POST'])
 def generate_token(request):

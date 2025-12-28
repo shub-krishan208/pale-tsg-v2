@@ -13,7 +13,7 @@ class TokenGenerateRequestSerializer(serializers.Serializer):
         allow_empty=True
 )
 
-
+# useless for now, made to return entry log object for debugs
 class EntryLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = EntryLog
