@@ -29,7 +29,6 @@ class EntryLog(models.Model):
     scanned_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        app_label = 'entries'
         db_table = 'entry_logs'
         
         indexes = [
@@ -43,4 +42,4 @@ class EntryLog(models.Model):
         return cls.objects.create(roll=user, **kwargs)
     
     def __str__(self):
-        return f"EntryLog(id={self.id} | roll={self.roll.roll} | status={self.status} | flag={self.entry_flag})"
+        return f"{self.id}"

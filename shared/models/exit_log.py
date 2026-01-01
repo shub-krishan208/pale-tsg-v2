@@ -27,7 +27,6 @@ class ExitLog(models.Model):
     scanned_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
-        app_label = 'entries'
         db_table = 'exit_logs'
         
         indexes = [
