@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     # local parties
     "shared.apps.users",
     "shared.apps.entries",
+    "scanner.apps.ScannerConfig",
     
 ]
 
@@ -34,3 +35,10 @@ DATABASES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "UTC"
+
+# Gate -> backend sync worker configuration
+BACKEND_SYNC_URL = os.environ.get("BACKEND_SYNC_URL", "").strip()
+GATE_API_KEY = os.environ.get("GATE_API_KEY", "").strip()
+SYNC_BATCH_SIZE = int(os.environ.get("SYNC_BATCH_SIZE", "200"))
+SYNC_INTERVAL_SECONDS = int(os.environ.get("SYNC_INTERVAL_SECONDS", "5"))
+SYNC_TIMEOUT_SECONDS = int(os.environ.get("SYNC_TIMEOUT_SECONDS", "10"))

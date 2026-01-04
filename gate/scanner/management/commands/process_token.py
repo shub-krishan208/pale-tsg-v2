@@ -1,11 +1,13 @@
 import json
 import sys
 from pathlib import Path
-from datetime import datetime
+
 import jwt
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from django.utils import timezone
 from shared.apps.entries.models import EntryLog
+from scanner.models import OutboxEvent
 
 
 class Command(BaseCommand):
@@ -65,8 +67,24 @@ class Command(BaseCommand):
                 )
                 entry_log_id = expired_payload.get("entryId")
                 if entry_log_id:
-                    EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED", scanned_at=datetime.now())
-                    self.stdout.write(f"  scanned successfully: EXPIRED at {datetime.now()}")
+                    ts = timezone.now()
+                    updated = EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED", scanned_at=ts)
+                    if updated:
+                        OutboxEvent.objects.create(
+                            event_type="ENTRY_EXPIRED_SEEN",
+                            payload={
+                                "eventId": None,  # filled at send-time from OutboxEvent.event_id
+                                "type": "ENTRY_EXPIRED_SEEN",
+                                "entryId": str(entry_log_id),
+                                "roll": expired_payload.get("roll"),
+                                "scannedAt": ts.isoformat(),
+                                "status": "EXPIRED",
+                                "entryFlag": expired_payload.get("entryFlag") or expired_payload.get("entry_flag") or None,
+                                "laptop": expired_payload.get("laptop"),
+                                "extra": expired_payload.get("extra") or [],
+                            },
+                        )
+                    self.stdout.write(f"  scanned successfully: EXPIRED at {ts}")
                 else:
                     self.stdout.write(f"  entry not found: {entry_log_id}")
             except Exception:
@@ -94,11 +112,27 @@ class Command(BaseCommand):
             entry = EntryLog.objects.filter(id=entry_log_id).only("id", "status", "entry_flag", "scanned_at").first()
             # If entry doesn't exist locally yet, create it on scan.
             if not entry:
-                has_open_entry = EntryLog.objects.filter(roll_id=roll, status="ENTERED").exists()
-                if has_open_entry:
+                ts = timezone.now()
+                open_entries = EntryLog.objects.filter(roll_id=roll, status="ENTERED")
+                if open_entries.exists():
                     # Auto-close any previous open entry locally.
-                    EntryLog.objects.filter(roll_id=roll, status="ENTERED").update(status="EXPIRED")
+                    open_entries.update(status="EXPIRED", scanned_at=ts)
                     entry_flag = "FORCED_ENTRY"
+                    for open_entry in open_entries:
+                        OutboxEvent.objects.create(
+                            event_type="ENTRY", # set event type as entry becuse the status expiry is handled by command, the token is never scanned for these
+                            payload={
+                                "eventId": None,
+                                "type": "ENTRY",
+                                "entryId": str(open_entry.id),
+                                "roll": roll,
+                                "scannedAt": None,
+                                "status": "EXPIRED",
+                                "entryFlag": open_entry.entry_flag,
+                                "laptop": open_entry.laptop,
+                                "extra": open_entry.extra or [],
+                            },
+                        )
                 else:
                     entry_flag = "NORMAL_ENTRY"
 
@@ -109,7 +143,21 @@ class Command(BaseCommand):
                     entry_flag=entry_flag,
                     laptop=laptop,
                     extra=extra or [],
-                    scanned_at=datetime.now(),
+                    scanned_at=ts,
+                )
+                OutboxEvent.objects.create(
+                    event_type="ENTRY",
+                    payload={
+                        "eventId": None,
+                        "type": "ENTRY",
+                        "entryId": str(entry.id),
+                        "roll": roll,
+                        "scannedAt": ts.isoformat(),
+                        "status": entry.status,
+                        "entryFlag": entry.entry_flag,
+                        "laptop": entry.laptop,
+                        "extra": entry.extra or [],
+                    },
                 )
                 self.stdout.write(
                     f"  scanned successfully: {entry.status} {entry.entry_flag} at {entry.scanned_at}"

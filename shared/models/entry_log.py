@@ -21,7 +21,7 @@ class EntryLog(models.Model):
         ('DUPLICATE_ENTRY', 'Duplicate Entry'),
     ]
     
-    entry_flag = models.CharField(max_length=30, choices=ENTRY_FLAG_CHOICES, default='NORMAL_ENTRY')
+    entry_flag = models.CharField(max_length=30, choices=ENTRY_FLAG_CHOICES, null=True, blank=True)
     laptop = models.CharField(max_length=150, null=True, blank=True)
     extra = models.JSONField(default=list, blank=True)
     

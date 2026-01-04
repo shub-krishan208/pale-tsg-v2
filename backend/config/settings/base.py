@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import sys
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 # __file__ is in config/settings/base.py, so we need 3x parent to get to backend/
@@ -123,3 +124,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
     'DEFAULT_PERMISSION_CLASSES': [],
 }
+
+# Gate sync (single gate + single backend) API key
+GATE_API_KEY = os.environ.get("GATE_API_KEY")
+SYNC_MAX_EVENTS = int(os.environ.get("SYNC_MAX_EVENTS", "500"))
