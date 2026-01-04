@@ -16,6 +16,16 @@ type AssetDeclarationFormProps = {
     roll: string;
 };
 
+const STORAGE_KEY = "library-pass-form";
+
+type SavedFormData = {
+    roll: string;
+    laptopName: string;
+    carryingDevice: boolean;
+    personalBooks: ListItem[];
+    extraGadgets: ListItem[];
+};
+
 export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     const { toasts, addToast, removeToast, updateToast } = useToast();
 
@@ -25,6 +35,41 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [qrVisible, setQrVisible] = React.useState(false);
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+
+    // Load saved data from localStorage on mount
+    React.useEffect(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const data: SavedFormData = JSON.parse(saved);
+                // Only autofill if the roll matches
+                if (data.roll === roll) {
+                    setLaptopName(data.laptopName || "");
+                    setCarryingDevice(data.carryingDevice ?? true);
+                    setPersonalBooks(data.personalBooks || []);
+                    setExtraGadgets(data.extraGadgets || []);
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load saved form data:", error);
+        }
+    }, [roll]);
+
+    // Save form data to localStorage
+    const saveFormData = () => {
+        try {
+            const data: SavedFormData = {
+                roll,
+                laptopName,
+                carryingDevice,
+                personalBooks,
+                extraGadgets,
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch (error) {
+            console.error("Failed to save form data:", error);
+        }
+    };
 
     // Check if form has any data
     const isFormEmpty = !laptopName.trim() && 
@@ -45,6 +90,9 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
 
     const handleConfirm = async () => {
         setShowConfirmModal(false);
+
+        // Save to localStorage after user confirms
+        saveFormData();
 
         // Show loading toast
         const toastId = addToast("Generating pass...", { loading: true });
