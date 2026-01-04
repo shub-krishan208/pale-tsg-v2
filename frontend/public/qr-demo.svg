@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="220" height="220" viewBox="0 0 220 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="220" height="220" rx="12" fill="#FFFFFF"/>
+  <!-- Simple, decorative QR-like pattern (placeholder) -->
+  <rect x="16" y="16" width="56" height="56" rx="6" fill="#111827"/>
+  <rect x="24" y="24" width="40" height="40" rx="4" fill="#FFFFFF"/>
+  <rect x="30" y="30" width="28" height="28" rx="3" fill="#111827"/>
+
+  <rect x="148" y="16" width="56" height="56" rx="6" fill="#111827"/>
+  <rect x="156" y="24" width="40" height="40" rx="4" fill="#FFFFFF"/>
+  <rect x="162" y="30" width="28" height="28" rx="3" fill="#111827"/>
+
+  <rect x="16" y="148" width="56" height="56" rx="6" fill="#111827"/>
+  <rect x="24" y="156" width="40" height="40" rx="4" fill="#FFFFFF"/>
+  <rect x="30" y="162" width="28" height="28" rx="3" fill="#111827"/>
+
+  <!-- Random modules -->
+  <rect x="90" y="22" width="10" height="10" fill="#111827"/>
+  <rect x="106" y="22" width="10" height="10" fill="#111827"/>
+  <rect x="90" y="38" width="10" height="10" fill="#111827"/>
+  <rect x="116" y="38" width="10" height="10" fill="#111827"/>
+  <rect x="100" y="54" width="10" height="10" fill="#111827"/>
+
+  <rect x="86" y="90" width="10" height="10" fill="#111827"/>
+  <rect x="102" y="90" width="10" height="10" fill="#111827"/>
+  <rect x="118" y="90" width="10" height="10" fill="#111827"/>
+  <rect x="134" y="90" width="10" height="10" fill="#111827"/>
+
+  <rect x="86" y="106" width="10" height="10" fill="#111827"/>
+  <rect x="118" y="106" width="10" height="10" fill="#111827"/>
+  <rect x="134" y="106" width="10" height="10" fill="#111827"/>
+
+  <rect x="86" y="122" width="10" height="10" fill="#111827"/>
+  <rect x="102" y="122" width="10" height="10" fill="#111827"/>
+  <rect x="134" y="122" width="10" height="10" fill="#111827"/>
+
+  <rect x="86" y="138" width="10" height="10" fill="#111827"/>
+  <rect x="118" y="138" width="10" height="10" fill="#111827"/>
+
+  <rect x="90" y="170" width="10" height="10" fill="#111827"/>
+  <rect x="106" y="170" width="10" height="10" fill="#111827"/>
+  <rect x="122" y="170" width="10" height="10" fill="#111827"/>
+  <rect x="138" y="170" width="10" height="10" fill="#111827"/>
+  <rect x="90" y="186" width="10" height="10" fill="#111827"/>
+  <rect x="122" y="186" width="10" height="10" fill="#111827"/>
+</svg>
+
