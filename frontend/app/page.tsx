@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { Laptop, LibraryBig, Package, Plus, Wifi, X } from "lucide-react";
+import { Check, Laptop, LibraryBig, Loader2,Headphones, Plus, Wifi, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,19 @@ function initials(name?: string) {
     return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "U";
 }
 
+/**
+ * Auto-capitalize first letter of each word when typing.
+ * Only applies when new value is longer (typing), not when shorter (backspace).
+ */
+function autoCapitalize(newValue: string, oldValue: string): string {
+    // Allow undo via backspace - don't transform if deleting
+    if (newValue.length <= oldValue.length) {
+        return newValue;
+    }
+    // Capitalize first letter of each word
+    return newValue.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default function Home() {
     // NOTE: Backend `User` currently only has `roll`. Keep other fields optional.
     const user: EntryPassUser = React.useMemo(
@@ -41,6 +54,26 @@ export default function Home() {
     const [personalBooks, setPersonalBooks] = React.useState<ListItem[]>([]);
     const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [secondsLeft, setSecondsLeft] = React.useState(14);
+    const [qrVisible, setQrVisible] = React.useState(false);
+    const [toast, setToast] = React.useState<{ message: string; loading?: boolean } | null>(null);
+
+    const handleComplete = async () => {
+        // Show loading toast
+        setToast({ message: "Generating pass...", loading: true });
+        
+        // Simulate API call
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        
+        // Show generated toast
+        setToast({ message: "Pass generated!", loading: false });
+        
+        // Show QR after a brief moment
+        setTimeout(() => {
+            setQrVisible(true);
+            // Hide toast after QR is shown
+            setTimeout(() => setToast(null), 1500);
+        }, 800);
+    };
 
     const addPersonalBook = () => {
         if (personalBooks.length < 5) {
@@ -54,7 +87,8 @@ export default function Home() {
 
     const updatePersonalBook = (index: number, field: keyof ListItem, value: string) => {
         const updated = [...personalBooks];
-        updated[index] = { ...updated[index], [field]: value };
+        const oldValue = updated[index][field];
+        updated[index] = { ...updated[index], [field]: autoCapitalize(value, oldValue) };
         setPersonalBooks(updated);
     };
 
@@ -70,7 +104,8 @@ export default function Home() {
 
     const updateExtraGadget = (index: number, field: keyof ListItem, value: string) => {
         const updated = [...extraGadgets];
-        updated[index] = { ...updated[index], [field]: value };
+        const oldValue = updated[index][field];
+        updated[index] = { ...updated[index], [field]: autoCapitalize(value, oldValue) };
         setExtraGadgets(updated);
     };
 
@@ -153,7 +188,7 @@ export default function Home() {
                         <div className="mt-3 pl-13">
                             <Input
                                 value={laptopName}
-                                onChange={(e) => setLaptopName(e.target.value)}
+                                onChange={(e) => setLaptopName(autoCapitalize(e.target.value, laptopName))}
                                 placeholder="Laptop/Device name (e.g., HP Victus i5-12450H)"
                                 disabled={!carryingDevice}
                                 aria-label="Laptop or device name"
@@ -220,7 +255,7 @@ export default function Home() {
                         {/* Extra Gadgets */}
                         <div className="mt-4 flex items-start gap-3">
                             <div className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
-                                <Package
+                                <Headphones
                                     className="size-5 text-white/85"
                                     aria-hidden
                                 />
@@ -275,40 +310,68 @@ export default function Home() {
                     </CardContent>
                 </Card>
 
-                {/* QR */}
-                <div className="relative mt-10">
-                    <Badge className="absolute z-10 -top-3 left-1/2 -translate-x-1/2 border-white/15 bg-[#06426A] text-white px-4 py-1">
-                        Asset Declared
-                    </Badge>
-                    <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
-                        <CardContent className="px-6 py-6">
-                            <div className="mx-auto w-full max-w-[260px] rounded-2xl bg-white/90 p-6 shadow-sm">
-                                <div className="relative aspect-square w-full">
-                                    <Image
-                                        src="/qr-demo.svg"
-                                        alt="Entry pass QR code"
-                                        fill
-                                        sizes="260px"
-                                        priority
-                                        className="object-contain"
-                                    />
+                {/* Completed Button or QR */}
+                {!qrVisible ? (
+                    <button
+                        type="button"
+                        onClick={handleComplete}
+                        disabled={toast?.loading}
+                        className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-emerald-500 text-base font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                        <Check className="size-5" aria-hidden />
+                        Completed
+                    </button>
+                ) : (
+                    <div className="relative mt-10">
+                        <Badge className="absolute z-10 -top-3 left-1/2 -translate-x-1/2 border-white/15 bg-[#06426A] text-white px-4 py-1">
+                            Asset Declared
+                        </Badge>
+                        <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
+                            <CardContent className="px-6 py-6">
+                                <div className="mx-auto w-full max-w-[260px] rounded-2xl bg-white/90 p-6 shadow-sm">
+                                    <div className="relative aspect-square w-full">
+                                        <Image
+                                            src="/qr-demo.svg"
+                                            alt="Entry pass QR code"
+                                            fill
+                                            sizes="260px"
+                                            priority
+                                            className="object-contain"
+                                        />
+                                    </div>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+                )}
 
                 {/* Footer status */}
-                <div className="mt-4 flex flex-col items-center gap-2">
-                    <div className="text-xs text-white/55">
-                        Auto-refreshing in {secondsLeft}s
+                {qrVisible && (
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                        <div className="text-xs text-white/55">
+                            Auto-refreshing in {secondsLeft}s
+                        </div>
+                        <Badge className="gap-1.5 border-emerald-300/25 bg-emerald-500/15 text-emerald-50">
+                            <Wifi className="size-3.5" aria-hidden />
+                            Valid Offline
+                        </Badge>
                     </div>
-                    <Badge className="gap-1.5 border-emerald-300/25 bg-emerald-500/15 text-emerald-50">
-                        <Wifi className="size-3.5" aria-hidden />
-                        Valid Offline
-                    </Badge>
-                </div>
+                )}
             </div>
+
+            {/* Toast */}
+            {toast && (
+                <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="inline-flex items-center gap-2.5 rounded-full bg-white/95 px-4 py-2.5 text-sm font-medium text-gray-900 shadow-lg backdrop-blur">
+                        {toast.loading ? (
+                            <Loader2 className="size-4 animate-spin text-gray-600" />
+                        ) : (
+                            <Check className="size-4 text-emerald-500" />
+                        )}
+                        {toast.message}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
