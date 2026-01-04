@@ -31,7 +31,7 @@ export default function Home() {
                     <UserProfile user={user} />
 
                     {/* Asset Declaration Form */}
-                    <AssetDeclarationForm />
+                    <AssetDeclarationForm roll={user.roll} />
                 </div>
             </ToastProvider>
         </div>

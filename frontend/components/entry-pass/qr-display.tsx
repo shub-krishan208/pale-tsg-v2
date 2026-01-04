@@ -108,6 +108,10 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
                 </button>
                 <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
                     <CardContent className="flex flex-col gap-5 px-6 py-6 justify-center items-center">
+                        <div className="text-center">
+                            <h3 className="text-lg font-semibold text-white">Entry & Exit Pass</h3>
+                            <p className="text-sm text-white/50">Save and scan to enter and exit</p>
+                        </div>
                         <div 
                             ref={qrRef} 
                             className="mx-auto w-full max-w-[260px] rounded-2xl bg-white/90 p-6 shadow-sm cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"

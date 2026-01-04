@@ -7,11 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ItemList } from "./item-list";
 import { QRDisplay, CompleteButton } from "./qr-display";
+import { ConfirmationModal } from "./confirmation-modal";
 import { useToast } from "./toast-provider";
-import { autoCapitalize } from "./utils";
+import { safeAutoCapitalize } from "./utils";
 import type { ListItem } from "./types";
 
-export function AssetDeclarationForm() {
+type AssetDeclarationFormProps = {
+    roll: string;
+};
+
+export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     const { toasts, addToast, removeToast, updateToast } = useToast();
 
     const [carryingDevice, setCarryingDevice] = React.useState(true);
@@ -19,6 +24,7 @@ export function AssetDeclarationForm() {
     const [personalBooks, setPersonalBooks] = React.useState<ListItem[]>([]);
     const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [qrVisible, setQrVisible] = React.useState(false);
+    const [showConfirmModal, setShowConfirmModal] = React.useState(false);
 
     // Check if form has any data
     const isFormEmpty = !laptopName.trim() && 
@@ -27,12 +33,18 @@ export function AssetDeclarationForm() {
         personalBooks.length === 0 && 
         extraGadgets.length === 0;
 
-    const handleComplete = async () => {
+    const handleCompleteClick = () => {
         // Validate - at least one field should have data
         if (isFormEmpty) {
             addToast("Please add at least one item", { error: true });
             return;
         }
+        // Show confirmation modal
+        setShowConfirmModal(true);
+    };
+
+    const handleConfirm = async () => {
+        setShowConfirmModal(false);
 
         // Show loading toast
         const toastId = addToast("Generating pass...", { loading: true });
@@ -122,8 +134,8 @@ export function AssetDeclarationForm() {
                     <div className="mt-3 pl-13">
                         <Input
                             value={laptopName}
-                            onChange={(e) => setLaptopName(autoCapitalize(e.target.value, laptopName))}
-                            placeholder="Laptop/Device name (e.g., HP Victus i5-12450H)"
+                            onChange={(e) => setLaptopName(safeAutoCapitalize(e.target.value, laptopName))}
+                            placeholder="e.g., Macbook Pro"
                             disabled={!carryingDevice || qrVisible}
                             aria-label="Laptop or device name"
                             className="h-10 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
@@ -164,11 +176,23 @@ export function AssetDeclarationForm() {
             {!qrVisible ? (
                 <CompleteButton
                     disabled={toasts.some((t) => t.loading)}
-                    onClick={handleComplete}
+                    onClick={handleCompleteClick}
                 />
             ) : (
                 <QRDisplay onEdit={handleEdit} />
             )}
+
+            {/* Confirmation Modal */}
+            <ConfirmationModal
+                isOpen={showConfirmModal}
+                onClose={() => setShowConfirmModal(false)}
+                onConfirm={handleConfirm}
+                roll={roll}
+                laptopName={laptopName}
+                carryingDevice={carryingDevice}
+                personalBooks={personalBooks}
+                extraGadgets={extraGadgets}
+            />
         </>
     );
 }

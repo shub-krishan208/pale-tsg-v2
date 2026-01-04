@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Headphones, LibraryBig, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { autoCapitalize } from "./utils";
+import { safeAutoCapitalize } from "./utils";
 import type { ListItem } from "./types";
 
 type ItemListProps = {
@@ -84,11 +84,11 @@ type ItemRowProps = {
 
 function ItemRow({ item, index, disabled, placeholder, onUpdate, onRemove }: ItemRowProps) {
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onUpdate(index, "name", autoCapitalize(e.target.value, item.name));
+        onUpdate(index, "name", safeAutoCapitalize(e.target.value, item.name));
     };
 
     const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onUpdate(index, "type", autoCapitalize(e.target.value, item.type));
+        onUpdate(index, "type", safeAutoCapitalize(e.target.value, item.type));
     };
 
     return (

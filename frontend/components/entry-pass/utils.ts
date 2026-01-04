@@ -16,3 +16,27 @@ export function initials(name?: string) {
     const parts = name.trim().split(/\s+/).slice(0, 2);
     return parts.map((p) => p[0]?.toUpperCase() ?? "").join("") || "U";
 }
+
+/**
+ * Sanitize user input to prevent injection attacks.
+ * Strips HTML tags, script content, and dangerous characters.
+ * Only allows alphanumeric, spaces, and common safe punctuation.
+ */
+export function sanitizeInput(input: string): string {
+    return input
+        // Remove HTML tags
+        .replace(/<[^>]*>/g, '')
+        // Remove script-like patterns
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+=/gi, '')
+        // Only allow safe characters: letters, numbers, spaces, and common punctuation
+        .replace(/[^\w\s\-.,()'/]/g, '');
+}
+
+/**
+ * Combined sanitize and auto-capitalize for text inputs
+ */
+export function safeAutoCapitalize(newValue: string, oldValue: string): string {
+    const sanitized = sanitizeInput(newValue);
+    return autoCapitalize(sanitized, oldValue);
+}
