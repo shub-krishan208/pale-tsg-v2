@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { ChevronLeft, Laptop, LibraryBig, Wifi } from "lucide-react";
+import { Laptop, LibraryBig, Package, Plus, Wifi, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +14,11 @@ type EntryPassUser = {
     roll: string;
     name?: string;
     department?: string;
+};
+
+type ListItem = {
+    name: string;
+    type: string;
 };
 
 function initials(name?: string) {
@@ -33,8 +38,41 @@ export default function Home() {
 
     const [carryingDevice, setCarryingDevice] = React.useState(true);
     const [laptopName, setLaptopName] = React.useState("");
-    const [personalBooks, setPersonalBooks] = React.useState("");
+    const [personalBooks, setPersonalBooks] = React.useState<ListItem[]>([]);
+    const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [secondsLeft, setSecondsLeft] = React.useState(14);
+
+    const addPersonalBook = () => {
+        if (personalBooks.length < 5) {
+            setPersonalBooks([...personalBooks, { name: "", type: "book" }]);
+        }
+    };
+
+    const removePersonalBook = (index: number) => {
+        setPersonalBooks(personalBooks.filter((_, i) => i !== index));
+    };
+
+    const updatePersonalBook = (index: number, field: keyof ListItem, value: string) => {
+        const updated = [...personalBooks];
+        updated[index] = { ...updated[index], [field]: value };
+        setPersonalBooks(updated);
+    };
+
+    const addExtraGadget = () => {
+        if (extraGadgets.length < 10) {
+            setExtraGadgets([...extraGadgets, { name: "", type: "gadget" }]);
+        }
+    };
+
+    const removeExtraGadget = (index: number) => {
+        setExtraGadgets(extraGadgets.filter((_, i) => i !== index));
+    };
+
+    const updateExtraGadget = (index: number, field: keyof ListItem, value: string) => {
+        const updated = [...extraGadgets];
+        updated[index] = { ...updated[index], [field]: value };
+        setExtraGadgets(updated);
+    };
 
     React.useEffect(() => {
         const total = 15;
@@ -55,7 +93,7 @@ export default function Home() {
                         onClick={() => window.history.back()}
                         className="absolute left-0 inline-flex size-11 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/10 active:bg-white/15"
                     >
-                        <ChevronLeft className="size-6" aria-hidden />
+                        {/* <ChevronLeft className="size-6" aria-hidden /> */}
                     </button>
                     <h1 className="text-base font-semibold tracking-tight">
                         Library Entry Pass
@@ -73,9 +111,9 @@ export default function Home() {
                         <div className="truncate text-lg font-semibold leading-6">
                             {user.name ?? user.roll}
                         </div>
-                        <div className="truncate text-sm text-white/70">
+                        {/* <div className="truncate text-sm text-white/70">
                             {user.roll}
-                        </div>
+                        </div> */}
                         {user.department ? (
                             <div className="truncate text-sm text-white/55">
                                 {user.department}
@@ -123,33 +161,123 @@ export default function Home() {
                             />
                         </div>
 
+                        {/* Personal Books */}
                         <div className="mt-4 flex items-start gap-3">
-                            <div className="inline-flex size-10 items-center justify-center rounded-xl bg-white/10">
+                            <div className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
                                 <LibraryBig
                                     className="size-5 text-white/85"
                                     aria-hidden
                                 />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium">
-                                    Personal Books
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-medium">
+                                        Personal Books
+                                    </div>
+                                    <span className="text-xs text-white/50">
+                                        {personalBooks.length}/5
+                                    </span>
                                 </div>
-                                <Input
-                                    value={personalBooks}
-                                    onChange={(e) =>
-                                        setPersonalBooks(e.target.value)
-                                    }
-                                    placeholder="Add book titles or serial numbers..."
-                                    className="mt-2 h-10 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                <div className="mt-2 space-y-2">
+                                    {personalBooks.map((item, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <Input
+                                                value={item.name}
+                                                onChange={(e) => updatePersonalBook(index, "name", e.target.value)}
+                                                placeholder="Book title..."
+                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                            />
+                                            <Input
+                                                value={item.type}
+                                                onChange={(e) => updatePersonalBook(index, "type", e.target.value)}
+                                                placeholder="Type"
+                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePersonalBook(index)}
+                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                                                aria-label="Remove book"
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {personalBooks.length < 5 && (
+                                        <button
+                                            type="button"
+                                            onClick={addPersonalBook}
+                                            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/20 text-sm text-white/60 transition-colors hover:border-white/30 hover:bg-white/5 hover:text-white/80"
+                                        >
+                                            <Plus className="size-4" />
+                                            Add Book
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Extra Gadgets */}
+                        <div className="mt-4 flex items-start gap-3">
+                            <div className="inline-flex size-10 shrink-0 items-center justify-center rounded-xl bg-white/10">
+                                <Package
+                                    className="size-5 text-white/85"
+                                    aria-hidden
                                 />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm font-medium">
+                                        Extra Gadgets
+                                    </div>
+                                    <span className="text-xs text-white/50">
+                                        {extraGadgets.length}/10
+                                    </span>
+                                </div>
+                                <div className="mt-2 space-y-2">
+                                    {extraGadgets.map((item, index) => (
+                                        <div key={index} className="flex items-center gap-2">
+                                            <Input
+                                                value={item.name}
+                                                onChange={(e) => updateExtraGadget(index, "name", e.target.value)}
+                                                placeholder="Gadget name..."
+                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                            />
+                                            <Input
+                                                value={item.type}
+                                                onChange={(e) => updateExtraGadget(index, "type", e.target.value)}
+                                                placeholder="Type"
+                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeExtraGadget(index)}
+                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                                                aria-label="Remove gadget"
+                                            >
+                                                <X className="size-4" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {extraGadgets.length < 10 && (
+                                        <button
+                                            type="button"
+                                            onClick={addExtraGadget}
+                                            className="inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/20 text-sm text-white/60 transition-colors hover:border-white/30 hover:bg-white/5 hover:text-white/80"
+                                        >
+                                            <Plus className="size-4" />
+                                            Add Gadget
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
 
                 {/* QR */}
-                <div className="relative mt-6">
-                    <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 border-white/15 bg-sky-400/20 text-sky-50">
+                <div className="relative mt-10">
+                    <Badge className="absolute z-10 -top-3 left-1/2 -translate-x-1/2 border-white/15 bg-[#06426A] text-white px-4 py-1">
                         Asset Declared
                     </Badge>
                     <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
