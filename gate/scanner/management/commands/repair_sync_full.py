@@ -137,6 +137,7 @@ class Command(BaseCommand):
                         "exitFlag": x.exit_flag,
                         "laptop": x.laptop,
                         "extra": x.extra or [],
+                        "deviceMeta": x.device_meta or {},
                     }
                 )
             resp = _post_events(url, api_key, events, timeout_s=timeout_s)

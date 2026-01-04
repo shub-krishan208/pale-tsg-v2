@@ -175,12 +175,15 @@ def gate_events(request):
                     exit_flag = ev.get("exitFlag") or "NORMAL_EXIT"
                     laptop = ev.get("laptop")
                     extra = ev.get("extra") or []
+                    device_meta = ev.get("deviceMeta") or {}
 
                     if not exit_id or not roll:
                         raise ValueError("EXIT requires exitId and roll")
 
                     if not isinstance(extra, list):
                         raise ValueError("EXIT extra must be a list")
+                    if not isinstance(device_meta, dict):
+                        raise ValueError("EXIT deviceMeta must be an object")
 
                     user, _ = User.objects.get_or_create(roll=roll)
                     entry_obj = None
@@ -205,6 +208,7 @@ def gate_events(request):
                                 "exit_flag": exit_flag,
                                 "laptop": laptop,
                                 "extra": extra,
+                                "device_meta": device_meta,
                             },
                         )
 
