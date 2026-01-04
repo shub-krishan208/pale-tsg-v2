@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import * as React from "react";
-import { Check, Laptop, LibraryBig, Loader2,Headphones, Plus, Wifi, X } from "lucide-react";
+import { Check, Laptop, LibraryBig, Loader2, Headphones, Pencil, Plus, Wifi, X } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -55,24 +55,64 @@ export default function Home() {
     const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [secondsLeft, setSecondsLeft] = React.useState(14);
     const [qrVisible, setQrVisible] = React.useState(false);
-    const [toast, setToast] = React.useState<{ message: string; loading?: boolean } | null>(null);
+    const [toasts, setToasts] = React.useState<Array<{ id: number; message: string; loading?: boolean; error?: boolean }>>([]);
+
+    // Toast helper function
+    const addToast = (message: string, options?: { loading?: boolean; error?: boolean; duration?: number }) => {
+        const id = Date.now();
+        setToasts((prev) => [...prev, { id, message, loading: options?.loading, error: options?.error }]);
+        
+        // Auto-remove after duration (default 2500ms, skip if loading)
+        if (!options?.loading) {
+            setTimeout(() => {
+                setToasts((prev) => prev.filter((t) => t.id !== id));
+            }, options?.duration ?? 2500);
+        }
+        
+        return id;
+    };
+
+    const removeToast = (id: number) => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+    };
+
+    const updateToast = (id: number, updates: { message?: string; loading?: boolean; error?: boolean }) => {
+        setToasts((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
+    };
+
+    // Check if form has any data
+    const isFormEmpty = !laptopName.trim() && 
+        personalBooks.every((b) => !b.name.trim()) && 
+        extraGadgets.every((g) => !g.name.trim()) &&
+        personalBooks.length === 0 && 
+        extraGadgets.length === 0;
 
     const handleComplete = async () => {
+        // Validate - at least one field should have data
+        if (isFormEmpty) {
+            addToast("Please add at least one item", { error: true });
+            return;
+        }
+
         // Show loading toast
-        setToast({ message: "Generating pass...", loading: true });
+        const toastId = addToast("Generating pass...", { loading: true });
         
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 1500));
         
-        // Show generated toast
-        setToast({ message: "Pass generated!", loading: false });
+        // Update to success and remove after delay
+        updateToast(toastId, { message: "Pass generated!", loading: false });
+        setTimeout(() => removeToast(toastId), 1500);
         
         // Show QR after a brief moment
         setTimeout(() => {
             setQrVisible(true);
-            // Hide toast after QR is shown
-            setTimeout(() => setToast(null), 1500);
         }, 800);
+    };
+
+    const handleEdit = () => {
+        setQrVisible(false);
+        addToast("You can now edit your declaration");
     };
 
     const addPersonalBook = () => {
@@ -181,7 +221,8 @@ export default function Home() {
                                 aria-label="Carrying laptop or device"
                                 checked={carryingDevice}
                                 onCheckedChange={setCarryingDevice}
-                                className="data-[state=checked]:bg-amber-400 data-[state=unchecked]:bg-white/20 **:data-[slot=switch-thumb]:bg-white"
+                                disabled={qrVisible}
+                                className="data-[state=checked]:bg-amber-400 data-[state=unchecked]:bg-white/20 **:data-[slot=switch-thumb]:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                             />
                         </div>
 
@@ -190,7 +231,7 @@ export default function Home() {
                                 value={laptopName}
                                 onChange={(e) => setLaptopName(autoCapitalize(e.target.value, laptopName))}
                                 placeholder="Laptop/Device name (e.g., HP Victus i5-12450H)"
-                                disabled={!carryingDevice}
+                                disabled={!carryingDevice || qrVisible}
                                 aria-label="Laptop or device name"
                                 className="h-10 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
                             />
@@ -220,25 +261,29 @@ export default function Home() {
                                                 value={item.name}
                                                 onChange={(e) => updatePersonalBook(index, "name", e.target.value)}
                                                 placeholder="Book title..."
-                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                                disabled={qrVisible}
+                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
                                             />
                                             <Input
                                                 value={item.type}
                                                 onChange={(e) => updatePersonalBook(index, "type", e.target.value)}
                                                 placeholder="Type"
-                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                                disabled={qrVisible}
+                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => removePersonalBook(index)}
-                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
-                                                aria-label="Remove book"
-                                            >
-                                                <X className="size-4" />
-                                            </button>
+                                            {!qrVisible && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removePersonalBook(index)}
+                                                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                                                    aria-label="Remove book"
+                                                >
+                                                    <X className="size-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
-                                    {personalBooks.length < 5 && (
+                                    {personalBooks.length < 5 && !qrVisible && (
                                         <button
                                             type="button"
                                             onClick={addPersonalBook}
@@ -276,25 +321,29 @@ export default function Home() {
                                                 value={item.name}
                                                 onChange={(e) => updateExtraGadget(index, "name", e.target.value)}
                                                 placeholder="Gadget name..."
-                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                                disabled={qrVisible}
+                                                className="h-9 flex-1 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
                                             />
                                             <Input
                                                 value={item.type}
                                                 onChange={(e) => updateExtraGadget(index, "type", e.target.value)}
                                                 placeholder="Type"
-                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25"
+                                                disabled={qrVisible}
+                                                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
                                             />
-                                            <button
-                                                type="button"
-                                                onClick={() => removeExtraGadget(index)}
-                                                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
-                                                aria-label="Remove gadget"
-                                            >
-                                                <X className="size-4" />
-                                            </button>
+                                            {!qrVisible && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeExtraGadget(index)}
+                                                    className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-white/50 transition-colors hover:bg-white/10 hover:text-white/80"
+                                                    aria-label="Remove gadget"
+                                                >
+                                                    <X className="size-4" />
+                                                </button>
+                                            )}
                                         </div>
                                     ))}
-                                    {extraGadgets.length < 10 && (
+                                    {extraGadgets.length < 10 && !qrVisible && (
                                         <button
                                             type="button"
                                             onClick={addExtraGadget}
@@ -315,7 +364,7 @@ export default function Home() {
                     <button
                         type="button"
                         onClick={handleComplete}
-                        disabled={toast?.loading}
+                        disabled={toasts.some((t) => t.loading)}
                         className="mt-8 inline-flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-emerald-500 text-base font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-400 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         <Check className="size-5" aria-hidden />
@@ -323,9 +372,17 @@ export default function Home() {
                     </button>
                 ) : (
                     <div className="relative mt-10">
-                        <Badge className="absolute z-10 -top-3 left-1/2 -translate-x-1/2 border-white/15 bg-[#06426A] text-white px-4 py-1">
+                        <Badge className="absolute z-10 -top-3 left-1/2 -translate-x-1/2 backdrop-blur-md border-white/15 bg-sky-400/20 text-white px-4 py-1">
                             Asset Declared
                         </Badge>
+                        <button
+                            type="button"
+                            onClick={handleEdit}
+                            className="absolute z-10 -top-3 right-0 inline-flex items-center gap-1 rounded-full  px-2 py-1 text-xs font-medium text-white/80 transition-colors hover:bg-white/20 hover:text-white hover:cursor-pointer"
+                        >
+                            <Pencil className="size-3" />
+                            Edit
+                        </button>
                         <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
                             <CardContent className="px-6 py-6">
                                 <div className="mx-auto w-full max-w-[260px] rounded-2xl bg-white/90 p-6 shadow-sm">
@@ -359,19 +416,31 @@ export default function Home() {
                 )}
             </div>
 
-            {/* Toast */}
-            {toast && (
-                <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="inline-flex items-center gap-2.5 rounded-full bg-white/95 px-4 py-2.5 text-sm font-medium text-gray-900 shadow-lg backdrop-blur">
-                        {toast.loading ? (
-                            <Loader2 className="size-4 animate-spin text-gray-600" />
-                        ) : (
-                            <Check className="size-4 text-emerald-500" />
-                        )}
-                        {toast.message}
+            {/* Stacking Toasts */}
+            <div className="fixed top-6 left-1/2 z-50 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none">
+                {toasts.map((toast, index) => (
+                    <div
+                        key={toast.id}
+                        className="pointer-events-auto animate-in fade-in slide-in-from-top-2 duration-300"
+                        style={{
+                            transform: `scale(${1 - index * 0.05}) translateY(${index * 4}px)`,
+                            opacity: 1 - index * 0.15,
+                            zIndex: 50 - index,
+                        }}
+                    >
+                        <div className={`inline-flex items-center gap-2.5 rounded-full px-4 py-2.5 text-sm font-medium shadow-lg backdrop-blur ${toast.error ? 'bg-red-50 text-red-900' : 'bg-white/95 text-gray-900'}`}>
+                            {toast.loading ? (
+                                <Loader2 className="size-4 animate-spin text-gray-600" />
+                            ) : toast.error ? (
+                                <X className="size-4 text-red-500" />
+                            ) : (
+                                <Check className="size-4 text-emerald-500" />
+                            )}
+                            {toast.message}
+                        </div>
                     </div>
-                </div>
-            )}
+                ))}
+            </div>
         </div>
     );
 }
