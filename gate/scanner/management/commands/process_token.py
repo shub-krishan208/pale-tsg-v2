@@ -1,10 +1,11 @@
 import json
 import sys
 from pathlib import Path
-
+from datetime import datetime
 import jwt
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
+from shared.apps.entries.models import EntryLog
 
 
 class Command(BaseCommand):
@@ -52,6 +53,22 @@ class Command(BaseCommand):
                 issuer="library-backend",
             )
         except jwt.ExpiredSignatureError:
+            # Token is cryptographically valid but expired; best-effort update of local gate DB.
+            try:
+                expired_payload = jwt.decode(
+                    token,
+                    public_key,
+                    algorithms=["RS256"],
+                    audience="library-gate",
+                    issuer="library-backend",
+                    options={"verify_exp": False},
+                )
+                entry_log_id = expired_payload.get("entryId")
+                if entry_log_id:
+                    EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED")
+            except Exception:
+                # If we can't decode/update, still deny as expired.
+                pass
             raise CommandError("DENY: token expired")
         except jwt.InvalidAudienceError:
             raise CommandError("DENY: invalid audience (aud)")
@@ -60,12 +77,46 @@ class Command(BaseCommand):
         except jwt.InvalidTokenError as e:
             raise CommandError(f"DENY: invalid token ({e})")
 
+        # proceeding to update the local database
         entry_id = payload.get("entryId") or payload.get("exitId")
+        entry_log_id = payload.get("entryId")
         roll = payload.get("roll")
         action = payload.get("action")
         laptop = payload.get("laptop")
         extra = payload.get("extra")
         exp = payload.get("exp")
+
+        # Update local gate DB entry_logs status + entry_flag (only for entry tokens)
+        if entry_log_id:
+            entry = EntryLog.objects.filter(id=entry_log_id).only("id", "status", "entry_flag", "scanned_at").first()
+            # If entry doesn't exist locally yet, create it on scan.
+            if not entry:
+                has_open_entry = EntryLog.objects.filter(roll_id=roll, status="ENTERED").exists()
+                if has_open_entry:
+                    # Auto-close any previous open entry locally.
+                    EntryLog.objects.filter(roll_id=roll, status="ENTERED").update(status="EXPIRED")
+                    entry_flag = "FORCED_ENTRY"
+                else:
+                    entry_flag = "NORMAL_ENTRY"
+
+                entry = EntryLog.create_with_roll(
+                    roll=roll,
+                    id=entry_log_id,
+                    status="ENTERED",
+                    entry_flag=entry_flag,
+                    laptop=laptop,
+                    extra=extra or [],
+                    scanned_at=datetime.now(),
+                )
+                self.stdout.write(
+                    f"  scanned successfully: {entry.status} {entry.entry_flag} at {entry.scanned_at}"
+                )
+            else:
+                # DUPLICATE_SCAN: same token scanned multiple times at entry (only first scan processed)
+                if entry.status == "ENTERED":
+                    self.stdout.write("  scanned successfully: DUPLICATE_SCAN")
+                else:
+                    self.stdout.write(f"  unexpected state for entryId={entry.id}: {entry.status}, ignoring")
 
         self.stdout.write("ALLOW:")
         self.stdout.write(f"  roll:   {roll}")

@@ -18,6 +18,9 @@ INSTALLED_APPS = [
     "shared.apps.users",
     "shared.apps.entries",
     "scanner.apps.ScannerConfig",
+    
+    # Third party apps
+    "shared",
 ]
 
 DATABASES = {
