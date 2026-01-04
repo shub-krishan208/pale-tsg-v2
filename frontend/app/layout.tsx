@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PALE — Library Entry Pass",
-  description: "Library entry pass UI",
+  title: "PALE | TSG",
+  description: "Library entry/exit pass UI",
 };
 
 export default function RootLayout({
