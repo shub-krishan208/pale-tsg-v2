@@ -13,14 +13,16 @@ class ExitLog(models.Model):
     
     EXIT_FLAG_CHOICES = [
         ('NORMAL_EXIT', 'Normal Exit'),
-        ('FORCED_EXIT', 'Forced Exit'),
+        ('EMERGENCY_EXIT', 'Emergency Exit'),
+        ('ORPHAN_EXIT', 'Orphan Exit'),
+        ('AUTO_EXIT', 'Auto Exit'),
         ('DUPLICATE_EXIT', 'Duplicate Exit'),
-        ('INVALID_TOKEN_EXIT', 'Invalid Token Exit'),
     ]
     exit_flag = models.CharField(max_length=30, choices=EXIT_FLAG_CHOICES, default='NORMAL_EXIT', null=False)
     
     laptop = models.CharField(max_length=150, null=True, blank=True)
     extra = models.JSONField(default=list, blank=True)
+    device_meta = models.JSONField(default=dict, blank=True)
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
@@ -32,6 +34,7 @@ class ExitLog(models.Model):
         
         indexes = [
             models.Index(fields=['roll', 'exit_flag'], name='exit_logs_roll_id_aae378_idx'),
+            models.Index(fields=['entry_id'], name='exit_logs_entry_id_idx'),
             models.Index(fields=['created_at'], name='exit_logs_created_91862c_idx'),
         ]
         
@@ -42,4 +45,4 @@ class ExitLog(models.Model):
     
     
     def __str__(self):
-        return f"ExitLog(id={self.id} | roll={self.roll} | exit_flag={self.exit_flag})"
+        return f"{self.roll} | {self.id}"

@@ -44,4 +44,4 @@ class EntryLog(models.Model):
         return cls.objects.create(roll=user, **kwargs)
     
     def __str__(self):
-        return f"{self.id}"
+        return f"{self.roll} | {self.id}"
