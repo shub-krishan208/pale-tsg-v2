@@ -1,4 +1,4 @@
-export { ToastProvider, useToast } from "./toast-provider";
+export { ToastProvider, useToast, showToast } from "./toast-provider";
 export { UserProfile } from "./user-profile";
 export { AssetDeclarationForm } from "./asset-declaration-form";
 export { QRDisplay, CompleteButton } from "./qr-display";

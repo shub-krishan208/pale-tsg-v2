@@ -2,7 +2,19 @@
 
 import * as React from "react";
 import { Check, Loader2, X } from "lucide-react";
-import type { Toast, ToastOptions } from "./types";
+
+export type Toast = {
+    id: number;
+    message: string;
+    loading?: boolean;
+    error?: boolean;
+};
+
+export type ToastOptions = {
+    loading?: boolean;
+    error?: boolean;
+    duration?: number;
+};
 
 type ToastContextType = {
     toasts: Toast[];
@@ -19,6 +31,19 @@ export function useToast() {
         throw new Error("useToast must be used within a ToastProvider");
     }
     return context;
+}
+
+// Standalone toast store for use outside React components
+let globalToastState: {
+    addToast: ((message: string, options?: ToastOptions) => number) | null;
+} = { addToast: null };
+
+export function showToast(message: string, options?: ToastOptions): number {
+    if (globalToastState.addToast) {
+        return globalToastState.addToast(message, options);
+    }
+    console.warn("Toast provider not mounted, cannot show toast:", message);
+    return -1;
 }
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
@@ -45,6 +70,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const updateToast = React.useCallback((id: number, updates: Partial<Toast>) => {
         setToasts((prev) => prev.map((t) => t.id === id ? { ...t, ...updates } : t));
     }, []);
+
+    // Register global toast function
+    React.useEffect(() => {
+        globalToastState.addToast = addToast;
+        return () => {
+            globalToastState.addToast = null;
+        };
+    }, [addToast]);
 
     return (
         <ToastContext.Provider value={{ toasts, addToast, removeToast, updateToast }}>

@@ -1,19 +1,58 @@
 "use client";
 
 import * as React from "react";
-import Image from "next/image";
-import { Check, Download, Pencil, Wifi, X } from "lucide-react";
+import QRCode from "qrcode";
+import { Check, Download, Pencil, Wifi, X, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { useToast } from "./toast-provider";
 
 type QRDisplayProps = {
     onEdit: () => void;
+    token?: string;
 };
 
-export function QRDisplay({ onEdit }: QRDisplayProps) {
+// Demo token for development (will be replaced by backend-provided token)
+const DEMO_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRyeUlkIjoiZjA3ODE3Y2QtYzJmMi00ZDZmLWIwMDktN2RiMjJmNWYwMjUyIiwicm9sbCI6IjI0TUExMDA2MyIsImFjdGlvbiI6IkVOVEVSSU5HIiwibGFwdG9wIjoiSFAgVklDVFVTIFNBTE1PTkVMTEEgaXg2OTAwMCIsImV4dHJhIjpbeyJuYW1lIjoiY2hhcmdlciIsInR5cGUiOiJnYWRnZXRzIn0seyJuYW1lIjoia2V5cyIsInR5cGUiOiJnYWRnZXRzIn0seyJuYW1lIjoiQXRvbWljIEhhYml0cyIsInR5cGUiOiJib29rcyJ9XSwiaXNzIjoibGlicmFyeS1iYWNrZW5kIiwiYXVkIjoibGlicmFyeS1nYXRlIiwiaWF0IjoxNzY3NTUxMzI3LCJleHAiOjE3Njc2Mzc3Mjd9.cEOH4CzyUC6xnpMcoCjRntBj6nxPgGMclCwqqe0_MnwlYSmUjaHr6yM9a4tC2WNeZ-OC6n_WbnpjJqvfMKVIaT8I3Iz2rNZFpS577OcW1Vgt5PoptbicLEUnFmD7JM3738WmdmDXCX10EiIyKsiEtnKNrDfwdf2f1vVmOJgQvtOq0vB74j5ljkiuNbnWcT_4-sOLojNGRvCf5bDN7LeAVXEB0Mv2-NMHwdGvQ7Wcz1TxAolsjgIkhIJhy5YgO-cRYyWh2CO1Dh-Ae2m3VzoXkbNqk1YJYVfMxCKt2pqw2gbplslAUDcRkeQdR3MHgbm099vvr8c9RTTNYiOSyFBpMQ";
+
+export function QRDisplay({ onEdit, token }: QRDisplayProps) {
     const [secondsLeft, setSecondsLeft] = React.useState(14);
     const [isFullscreen, setIsFullscreen] = React.useState(false);
+    const [qrDataUrl, setQrDataUrl] = React.useState<string | null>(null);
+    const [qrError, setQrError] = React.useState(false);
     const qrRef = React.useRef<HTMLDivElement>(null);
+    const { addToast } = useToast();
+
+    // Use provided token or fallback to demo
+    const activeToken = token || DEMO_TOKEN;
+
+    // Generate QR code from token
+    React.useEffect(() => {
+        if (!activeToken) {
+            setQrError(true);
+            addToast("No token provided for QR generation", { error: true });
+            return;
+        }
+
+        QRCode.toDataURL(activeToken, {
+            width: 512,
+            margin: 2,
+            color: {
+                dark: "#000000",
+                light: "#ffffff",
+            },
+            errorCorrectionLevel: "M",
+        })
+            .then((url) => {
+                setQrDataUrl(url);
+                setQrError(false);
+            })
+            .catch((err) => {
+                console.error("Failed to generate QR code:", err);
+                setQrError(true);
+                addToast("Failed to generate QR code", { error: true });
+            });
+    }, [activeToken, addToast]);
 
     React.useEffect(() => {
         const total = 15;
@@ -47,16 +86,15 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
     }, [isFullscreen]);
 
     const handleDownload = async () => {
-        if (!qrRef.current) return;
+        if (!qrDataUrl) {
+            addToast("No QR code to download", { error: true });
+            return;
+        }
 
         try {
-            // Get the image element
-            const img = qrRef.current.querySelector("img");
-            if (!img) return;
-
-            // Create a canvas to draw the QR with white background
+            // Create a canvas to add padding
             const canvas = document.createElement("canvas");
-            const size = 512; // High resolution output
+            const size = 512;
             canvas.width = size;
             canvas.height = size;
             const ctx = canvas.getContext("2d");
@@ -67,20 +105,16 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
             ctx.fillRect(0, 0, size, size);
 
             // Draw the QR image
-            const padding = 40;
-            const qrSize = size - padding * 2;
+            const img = new window.Image();
+            img.src = qrDataUrl;
             
-            // Create a temporary image to draw
-            const tempImg = new window.Image();
-            tempImg.crossOrigin = "anonymous";
-            
-            await new Promise<void>((resolve, reject) => {
-                tempImg.onload = () => resolve();
-                tempImg.onerror = () => reject(new Error("Failed to load image"));
-                tempImg.src = img.src;
+            await new Promise<void>((resolve) => {
+                img.onload = () => {
+                    const padding = 32;
+                    ctx.drawImage(img, padding, padding, size - padding * 2, size - padding * 2);
+                    resolve();
+                };
             });
-
-            ctx.drawImage(tempImg, padding, padding, qrSize, qrSize);
 
             // Download as PNG
             const link = document.createElement("a");
@@ -89,6 +123,7 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
             link.click();
         } catch (error) {
             console.error("Failed to download QR:", error);
+            addToast("Failed to download QR code", { error: true });
         }
     };
 
@@ -115,28 +150,35 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
                         <div 
                             ref={qrRef} 
                             className="mx-auto w-full max-w-[260px] rounded-2xl bg-white/90 p-6 shadow-sm cursor-pointer transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                            onClick={() => setIsFullscreen(true)}
+                            onClick={() => !qrError && setIsFullscreen(true)}
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(e) => e.key === "Enter" && setIsFullscreen(true)}
+                            onKeyDown={(e) => e.key === "Enter" && !qrError && setIsFullscreen(true)}
                             aria-label="View QR code fullscreen"
                         >
-                            <div className="relative aspect-square w-full">
-                                <Image
-                                    src="/qr-demo.svg"
-                                    alt="Entry pass QR code"
-                                    fill
-                                    sizes="260px"
-                                    priority
-                                    className="object-contain"
-                                />
+                            <div className="relative aspect-square w-full flex items-center justify-center">
+                                {qrError ? (
+                                    <div className="flex flex-col items-center gap-2 text-gray-500">
+                                        <AlertTriangle className="size-12" />
+                                        <span className="text-sm font-medium">QR Error</span>
+                                    </div>
+                                ) : qrDataUrl ? (
+                                    <img
+                                        src={qrDataUrl}
+                                        alt="Entry pass QR code"
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : (
+                                    <div className="size-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                                )}
                             </div>
                         
                         </div>
                         <button
                             type="button"
                             onClick={handleDownload}
-                            className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white"
+                            disabled={qrError || !qrDataUrl}
+                            className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white/90 transition-colors hover:bg-white/20 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Download className="size-4" />
                             Download QR
@@ -159,7 +201,7 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
             </div>
 
             {/* Fullscreen Modal */}
-            {isFullscreen && (
+            {isFullscreen && qrDataUrl && (
                 <div 
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200"
                     onClick={() => setIsFullscreen(false)}
@@ -184,16 +226,11 @@ export function QRDisplay({ onEdit }: QRDisplayProps) {
                         className="w-[80vmin] max-w-[400px] rounded-3xl bg-white p-8 shadow-2xl"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="relative aspect-square w-full">
-                            <Image
-                                src="/qr-demo.svg"
-                                alt="Entry pass QR code fullscreen"
-                                fill
-                                sizes="400px"
-                                priority
-                                className="object-contain"
-                            />
-                        </div>
+                        <img
+                            src={qrDataUrl}
+                            alt="Entry pass QR code fullscreen"
+                            className="w-full h-full object-contain"
+                        />
                     </div>
                 </div>
             )}
