@@ -65,7 +65,10 @@ class Command(BaseCommand):
                 )
                 entry_log_id = expired_payload.get("entryId")
                 if entry_log_id:
-                    EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED")
+                    EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED", scanned_at=datetime.now())
+                    self.stdout.write(f"  scanned successfully: EXPIRED at {datetime.now()}")
+                else:
+                    self.stdout.write(f"  entry not found: {entry_log_id}")
             except Exception:
                 # If we can't decode/update, still deny as expired.
                 pass

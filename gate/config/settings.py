@@ -14,13 +14,10 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
 
-    # Minimal local apps (they import models from shared/)
+    # local parties
     "shared.apps.users",
     "shared.apps.entries",
-    "scanner.apps.ScannerConfig",
     
-    # Third party apps
-    "shared",
 ]
 
 DATABASES = {

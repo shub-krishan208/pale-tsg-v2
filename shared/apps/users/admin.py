@@ -122,8 +122,8 @@ class UserAdmin(admin.ModelAdmin):
         """
         Combines links into one column for cleaner list view
         """
-        entry_url = reverse("admin:shared_entrylog_changelist")
-        exit_url = reverse("admin:shared_exitlog_changelist")
+        entry_url = reverse("admin:entries_entrylog_changelist")
+        exit_url = reverse("admin:entries_exitlog_changelist")
         
         # We filter by 'roll' (the ForeignKey field name). 
         # Since User PK is 'roll', this works perfectly.

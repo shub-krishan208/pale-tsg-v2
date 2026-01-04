@@ -27,11 +27,12 @@ class ExitLog(models.Model):
     scanned_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        app_label = "entries"
         db_table = 'exit_logs'
         
         indexes = [
-            models.Index(fields=['roll', 'exit_flag']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=['roll', 'exit_flag'], name='exit_logs_roll_id_aae378_idx'),
+            models.Index(fields=['created_at'], name='exit_logs_created_91862c_idx'),
         ]
         
     @classmethod

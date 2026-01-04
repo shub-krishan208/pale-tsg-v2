@@ -48,7 +48,6 @@ INSTALLED_APPS = [
     'shared.apps.users',
     'shared.apps.entries',
     'apps.sync',
-    'shared'
 ]
 
 MIDDLEWARE = [

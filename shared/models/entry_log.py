@@ -11,6 +11,7 @@ class EntryLog(models.Model):
         ('PENDING', 'Pending'),
         ('ENTERED', 'Entered'),
         ('EXITED', 'Exited'),
+        ('EXPIRED', 'Expired'),
     ]
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, null=False, default='PENDING')
     
@@ -29,11 +30,12 @@ class EntryLog(models.Model):
     scanned_at = models.DateTimeField(null=True, blank=True)
     
     class Meta:
+        app_label = "entries"
         db_table = 'entry_logs'
         
         indexes = [
-            models.Index(fields=['roll', 'status']),
-            models.Index(fields=['created_at']),
+            models.Index(fields=['roll', 'status'], name='entry_logs_roll_id_d07c5e_idx'),
+            models.Index(fields=['created_at'], name='entry_logs_created_2443f2_idx'),
         ]
     
     @classmethod
