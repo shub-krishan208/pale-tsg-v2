@@ -9,11 +9,8 @@ import { useToast } from "./toast-provider";
 
 type QRDisplayProps = {
     onEdit: () => void;
-    token?: string;
+    token? : string;
 };
-
-// Demo token for development (will be replaced by backend-provided token)
-const DEMO_TOKEN = "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbnRyeUlkIjoiZjA3ODE3Y2QtYzJmMi00ZDZmLWIwMDktN2RiMjJmNWYwMjUyIiwicm9sbCI6IjI0TUExMDA2MyIsImFjdGlvbiI6IkVOVEVSSU5HIiwibGFwdG9wIjoiSFAgVklDVFVTIFNBTE1PTkVMTEEgaXg2OTAwMCIsImV4dHJhIjpbeyJuYW1lIjoiY2hhcmdlciIsInR5cGUiOiJnYWRnZXRzIn0seyJuYW1lIjoia2V5cyIsInR5cGUiOiJnYWRnZXRzIn0seyJuYW1lIjoiQXRvbWljIEhhYml0cyIsInR5cGUiOiJib29rcyJ9XSwiaXNzIjoibGlicmFyeS1iYWNrZW5kIiwiYXVkIjoibGlicmFyeS1nYXRlIiwiaWF0IjoxNzY3NTUxMzI3LCJleHAiOjE3Njc2Mzc3Mjd9.cEOH4CzyUC6xnpMcoCjRntBj6nxPgGMclCwqqe0_MnwlYSmUjaHr6yM9a4tC2WNeZ-OC6n_WbnpjJqvfMKVIaT8I3Iz2rNZFpS577OcW1Vgt5PoptbicLEUnFmD7JM3738WmdmDXCX10EiIyKsiEtnKNrDfwdf2f1vVmOJgQvtOq0vB74j5ljkiuNbnWcT_4-sOLojNGRvCf5bDN7LeAVXEB0Mv2-NMHwdGvQ7Wcz1TxAolsjgIkhIJhy5YgO-cRYyWh2CO1Dh-Ae2m3VzoXkbNqk1YJYVfMxCKt2pqw2gbplslAUDcRkeQdR3MHgbm099vvr8c9RTTNYiOSyFBpMQ";
 
 export function QRDisplay({ onEdit, token }: QRDisplayProps) {
     const [secondsLeft, setSecondsLeft] = React.useState(14);
@@ -24,8 +21,9 @@ export function QRDisplay({ onEdit, token }: QRDisplayProps) {
     const { addToast } = useToast();
 
     // Use provided token or fallback to demo
-    const activeToken = token || DEMO_TOKEN;
-
+    const activeToken = token || window.localStorage.getItem("lib_pass_token");
+    console.log(activeToken);
+    
     // Generate QR code from token
     React.useEffect(() => {
         if (!activeToken) {

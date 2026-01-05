@@ -87,10 +87,6 @@ function ItemRow({ item, index, disabled, placeholder, onUpdate, onRemove }: Ite
         onUpdate(index, "name", safeAutoCapitalize(e.target.value, item.name));
     };
 
-    const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onUpdate(index, "type", safeAutoCapitalize(e.target.value, item.type));
-    };
-
     return (
         <div className="flex items-center gap-2">
             <Input
@@ -102,10 +98,9 @@ function ItemRow({ item, index, disabled, placeholder, onUpdate, onRemove }: Ite
             />
             <Input
                 value={item.type}
-                onChange={handleTypeChange}
+                readOnly
                 placeholder="Type"
-                disabled={disabled}
-                className="h-9 w-20 border-white/12 bg-white/5 text-white placeholder:text-white/40 focus-visible:ring-white/25 disabled:opacity-60"
+                className="h-9 w-20 border-white/12 bg-white/5 text-white/50 placeholder:text-white/40 focus-visible:ring-0 caret-transparent cursor-default"
             />
             {!disabled && (
                 <button

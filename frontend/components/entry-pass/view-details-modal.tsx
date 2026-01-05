@@ -1,31 +1,26 @@
 "use client";
 
 import * as React from "react";
-import { X, Check, Laptop, LibraryBig, Headphones, User } from "lucide-react";
-import type { ListItem, SessionData } from "./types";
-import { apiCall } from "@/app/api";
+import { X, Laptop, LibraryBig, Headphones, User } from "lucide-react";
+import type { ListItem } from "./types";
 
-type ConfirmationModalProps = {
+type ViewDetailsModalProps = {
     isOpen: boolean;
     onClose: () => void;
-    onConfirm: (sessionData: SessionData) => void;
     roll: string;
     laptopName: string;
-    carryingDevice: boolean;
     personalBooks: ListItem[];
     extraGadgets: ListItem[];
 };
 
-export function ConfirmationModal({
+export function ViewDetailsModal({
     isOpen,
     onClose,
-    onConfirm,
     roll,
     laptopName,
-    carryingDevice,
     personalBooks,
     extraGadgets,
-}: ConfirmationModalProps) {
+}: ViewDetailsModalProps) {
     // Prevent body scroll when modal is open
     React.useEffect(() => {
         if (isOpen) {
@@ -51,17 +46,9 @@ export function ConfirmationModal({
 
     if (!isOpen) return null;
 
-    const hasLaptop = carryingDevice && laptopName.trim();
     const filledBooks = personalBooks.filter((b) => b.name.trim());
     const filledGadgets = extraGadgets.filter((g) => g.name.trim());
 
-  
-    const extraItems: ListItem[] = [...filledBooks, ...filledGadgets];  
-    const sessionData: SessionData = {
-        roll,
-        laptop: laptopName,
-        extra: extraItems
-    }
     return (
         <div 
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -88,15 +75,15 @@ export function ConfirmationModal({
                 {/* Header */}
                 <div className="px-6 pt-6 pb-4 text-center">
                     <h2 className="text-lg font-semibold text-white">
-                        Confirm Your Declaration
+                        Last Declaration
                     </h2>
                     <p className="mt-1 text-sm text-white/60">
-                        Please verify the details below
+                        Your previous pass details
                     </p>
                 </div>
 
                 {/* Content */}
-                <div className="px-6 pb-4 space-y-3">
+                <div className="px-6 pb-6 space-y-3">
                     {/* Roll Number */}
                     <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
                         <div className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
@@ -109,7 +96,7 @@ export function ConfirmationModal({
                     </div>
 
                     {/* Laptop/Device */}
-                    {hasLaptop && (
+                    {laptopName && (
                         <div className="flex items-start gap-3 rounded-xl bg-white/5 p-3">
                             <div className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/20">
                                 <Laptop className="size-4 text-amber-400" />
@@ -168,25 +155,6 @@ export function ConfirmationModal({
                             </ul>
                         </div>
                     )}
-                </div>
-
-                {/* Actions */}
-                <div className="px-6 pb-6 flex gap-3">
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="flex-1 h-12 rounded-xl border border-white/15 bg-white/5 text-sm font-medium text-white/80 transition-colors hover:bg-white/10"
-                    >
-                        Go Back
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => onConfirm(sessionData)}
-                        className="flex-1 h-12 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-500 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition-all hover:bg-emerald-400 active:scale-[0.98]"
-                    >
-                        <Check className="size-4" />
-                        Confirm
-                    </button>
                 </div>
             </div>
         </div>

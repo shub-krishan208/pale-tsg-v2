@@ -6,7 +6,7 @@ export type EntryPassUser = {
 
 export type ListItem = {
     name: string;
-    type: string;
+    type: "books" | "gadgets";
 };
 
 export type Toast = {
@@ -21,3 +21,9 @@ export type ToastOptions = {
     error?: boolean;
     duration?: number;
 };
+
+export type SessionData = {
+    roll: string;
+    laptop: string;
+    extra: ListItem[];
+}

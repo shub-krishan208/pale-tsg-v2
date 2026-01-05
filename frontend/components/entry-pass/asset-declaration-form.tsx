@@ -1,22 +1,25 @@
 "use client";
 
 import * as React from "react";
-import { Laptop } from "lucide-react";
+import { Laptop, QrCode, ChevronDown, ChevronUp, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { ItemList } from "./item-list";
 import { QRDisplay, CompleteButton } from "./qr-display";
 import { ConfirmationModal } from "./confirmation-modal";
+import { ViewDetailsModal } from "./view-details-modal";
 import { useToast } from "./toast-provider";
 import { safeAutoCapitalize } from "./utils";
-import type { ListItem } from "./types";
+import type { ListItem, SessionData } from "./types";
+import { apiCall } from "@/app/api";
 
 type AssetDeclarationFormProps = {
     roll: string;
 };
 
 const STORAGE_KEY = "library-pass-form";
+const TOKEN_KEY = "lib_pass_token";
 
 type SavedFormData = {
     roll: string;
@@ -35,6 +38,46 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     const [extraGadgets, setExtraGadgets] = React.useState<ListItem[]>([]);
     const [qrVisible, setQrVisible] = React.useState(false);
     const [showConfirmModal, setShowConfirmModal] = React.useState(false);
+    const [showLastPass, setShowLastPass] = React.useState(false);
+    const [hasSavedToken, setHasSavedToken] = React.useState(false);
+    const [savedFormData, setSavedFormData] = React.useState<SavedFormData | null>(null);
+    const [showDetailsModal, setShowDetailsModal] = React.useState(false);
+    const lastPassQrRef = React.useRef<HTMLDivElement>(null);
+    const newQrRef = React.useRef<HTMLDivElement>(null);
+
+    // Scroll to QR when toggle is turned on
+    React.useEffect(() => {
+        if (showLastPass && lastPassQrRef.current) {
+            setTimeout(() => {
+                lastPassQrRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+        }
+    }, [showLastPass]);
+
+    // Scroll to newly generated QR
+    React.useEffect(() => {
+        if (qrVisible && newQrRef.current) {
+            setTimeout(() => {
+                newQrRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 100);
+        }
+    }, [qrVisible]);
+
+    // Check for saved token on mount
+    React.useEffect(() => {
+        const token = localStorage.getItem(TOKEN_KEY);
+        setHasSavedToken(!!token);
+        
+        // Load saved form data for summary
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                setSavedFormData(JSON.parse(saved));
+            }
+        } catch (error) {
+            console.error("Failed to load saved form data:", error);
+        }
+    }, []);
 
     // Load saved data from localStorage on mount
     React.useEffect(() => {
@@ -66,6 +109,7 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
                 extraGadgets,
             };
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            setSavedFormData(data);
         } catch (error) {
             console.error("Failed to save form data:", error);
         }
@@ -87,28 +131,50 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
         // Show confirmation modal
         setShowConfirmModal(true);
     };
-
-    const handleConfirm = async () => {
+    
+    const handleConfirm = async (sessionData: SessionData) => {
         setShowConfirmModal(false);
-
+        
+        // Hide last pass toggle when generating new QR
+        setShowLastPass(false);
+        
         // Save to localStorage after user confirms
         saveFormData();
-
+        
         // Show loading toast
         const toastId = addToast("Generating pass...", { loading: true });
         
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        
-        // Update to success and remove after delay
-        updateToast(toastId, { message: "Pass generated!", loading: false });
-        setTimeout(() => removeToast(toastId), 1500);
-        
-        // Show QR after a brief moment
-        setTimeout(() => {
-            setQrVisible(true);
-        }, 800);
+        let apiResult: any;
+
+        try {
+            // artificial delay
+            await new Promise<void>((resolve) => setTimeout(resolve, 1500));
+
+            // actual API call
+            apiResult = await apiCall("/api/entries/generate/", sessionData);
+
+            // Update to success and remove after delay
+            updateToast(toastId, { message: apiResult.data?.message || "No success message!", loading: false });
+            setTimeout(() => removeToast(toastId), 1500);
+
+            // Show QR after a brief moment
+            setTimeout(() => {
+                setQrVisible(true);
+            }, 800);
+            
+            // Save token and update state
+            window.localStorage.setItem(TOKEN_KEY, apiResult.data?.token);
+            setHasSavedToken(true);
+        } catch (err) {
+            updateToast(toastId, {
+                message: "Failed to generate pass! " + err,
+                loading: false,
+            });
+            setTimeout(() => removeToast(toastId), 1500);
+            throw err;
+        }
     };
+
 
     const handleEdit = () => {
         setQrVisible(false);
@@ -118,7 +184,7 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     // Personal Books handlers
     const addPersonalBook = () => {
         if (personalBooks.length < 5) {
-            setPersonalBooks([...personalBooks, { name: "", type: "book" }]);
+            setPersonalBooks([...personalBooks, { name: "", type: "books" }]);
         }
     };
 
@@ -135,7 +201,7 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
     // Extra Gadgets handlers
     const addExtraGadget = () => {
         if (extraGadgets.length < 10) {
-            setExtraGadgets([...extraGadgets, { name: "", type: "gadget" }]);
+            setExtraGadgets([...extraGadgets, { name: "", type: "gadgets" }]);
         }
     };
 
@@ -222,12 +288,83 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
 
             {/* Completed Button or QR */}
             {!qrVisible ? (
-                <CompleteButton
-                    disabled={toasts.some((t) => t.loading)}
-                    onClick={handleCompleteClick}
-                />
+                <>
+                    <CompleteButton
+                        disabled={toasts.some((t) => t.loading)}
+                        onClick={handleCompleteClick}
+                    />
+                    
+                    {/* View Last Pass Toggle - only show when not generating new QR */}
+                    {hasSavedToken && !toasts.some((t) => t.loading) && (
+                        <div className="mt-4">
+                            <button
+                                type="button"
+                                onClick={() => setShowLastPass(!showLastPass)}
+                                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+                            >
+                                <QrCode className="size-4" />
+                                {showLastPass ? "Hide Last Pass" : "View Last Pass"}
+                                {showLastPass ? (
+                                    <ChevronUp className="size-4 ml-auto" />
+                                ) : (
+                                    <ChevronDown className="size-4 ml-auto" />
+                                )}
+                            </button>
+                            
+                            {/* Summary Card - shown when toggle is OFF */}
+                            {!showLastPass && savedFormData && (
+                                <Card className="mt-3 border-white/10 bg-white/5 py-0 shadow-none">
+                                    <CardContent className="px-4 py-3">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <div className="text-xs font-medium text-white/50">Last Declaration</div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowDetailsModal(true)}
+                                                className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors"
+                                                aria-label="View details"
+                                            >
+                                                <Eye className="size-3.5" />
+                                                <span>View</span>
+                                            </button>
+                                        </div>
+                                        <div className="space-y-1.5 text-sm text-white/80">
+                                            {savedFormData.laptopName && (
+                                                <div className="flex items-center gap-2">
+                                                    <Laptop className="size-3.5 text-amber-400" />
+                                                    <span className="truncate">{savedFormData.laptopName}</span>
+                                                </div>
+                                            )}
+                                            {savedFormData.personalBooks?.filter(b => b.name.trim()).length > 0 && (
+                                                <div className="text-white/60 text-xs">
+                                                    {savedFormData.personalBooks.filter(b => b.name.trim()).length} book(s)
+                                                </div>
+                                            )}
+                                            {savedFormData.extraGadgets?.filter(g => g.name.trim()).length > 0 && (
+                                                <div className="text-white/60 text-xs">
+                                                    {savedFormData.extraGadgets.filter(g => g.name.trim()).length} gadget(s)
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                            
+                            {/* QR Display - shown when toggle is ON */}
+                            {showLastPass && (
+                                <div 
+                                    ref={lastPassQrRef}
+                                    className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300"
+                                >
+                                    <QRDisplay onEdit={() => setShowLastPass(false)} />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </>
             ) : (
-                <QRDisplay onEdit={handleEdit} />
+                <div ref={newQrRef}>
+                    <QRDisplay onEdit={handleEdit}/>
+                </div>
             )}
 
             {/* Confirmation Modal */}
@@ -241,6 +378,18 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
                 personalBooks={personalBooks}
                 extraGadgets={extraGadgets}
             />
+
+            {/* View Details Modal */}
+            {savedFormData && (
+                <ViewDetailsModal
+                    isOpen={showDetailsModal}
+                    onClose={() => setShowDetailsModal(false)}
+                    roll={savedFormData.roll}
+                    laptopName={savedFormData.laptopName}
+                    personalBooks={savedFormData.personalBooks}
+                    extraGadgets={savedFormData.extraGadgets}
+                />
+            )}
         </>
     );
 }
