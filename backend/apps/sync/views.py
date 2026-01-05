@@ -9,9 +9,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
-from shared.models.entry_log import EntryLog
-from shared.models.exit_log import ExitLog
-from shared.models.user import User
+from shared.apps.entries.models import EntryLog
+from shared.apps.entries.models import ExitLog
+from shared.apps.users.models import User
 
 from .models import ProcessedGateEvent
 

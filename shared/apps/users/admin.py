@@ -5,8 +5,7 @@ from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.db.models import Count
 
-from shared.models.entry_log import EntryLog
-from shared.models.exit_log import ExitLog
+from shared.apps.entries.models import EntryLog, ExitLog
 from .models import User
 
 INLINE_LOG_LIMIT = 50

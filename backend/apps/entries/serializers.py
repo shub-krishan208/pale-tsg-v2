@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from shared.models.entry_log import EntryLog
+from shared.apps.entries.models import EntryLog
 
 
 # Entry and Exit log serializers will be implemented here

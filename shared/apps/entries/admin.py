@@ -1,7 +1,6 @@
 from django.contrib import admin
 
-from .models import EntryLog, ExitLog
-
+from shared.apps.entries.models import EntryLog, ExitLog
 
 @admin.register(EntryLog)
 class EntryLogAdmin(admin.ModelAdmin):

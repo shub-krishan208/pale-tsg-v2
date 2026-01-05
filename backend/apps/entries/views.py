@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from backend.core.jwt_utils import generate_jwt_token
-from shared.models.entry_log import EntryLog
+from shared.apps.entries.models import EntryLog
 from .serializers import TokenGenerateRequestSerializer, EmergencyExitTokenRequestSerializer
 
 @api_view(['POST'])
