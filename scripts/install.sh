@@ -15,9 +15,9 @@ echo ""
 
 # Check Python version
 echo "📦 Checking Python..."
-if ! command -v python &> /dev/null; then
-    echo "❌ Python not found. Please install Python 3.12+"
-    exit 1
+if ! command -v python &>/dev/null; then
+  echo "❌ Python not found. Please install Python 3.12+"
+  exit 1
 fi
 
 PYTHON_VERSION=$(python --version 2>&1 | cut -d' ' -f2)
@@ -27,10 +27,10 @@ echo "   Found Python $PYTHON_VERSION"
 echo ""
 echo "📦 Setting up virtual environment..."
 if [ ! -d ".venv" ]; then
-    python -m venv .venv
-    echo "   Created .venv"
+  python -m venv .venv
+  echo "   Created .venv"
 else
-    echo "   .venv already exists"
+  echo "   .venv already exists"
 fi
 
 # Activate venv
@@ -47,23 +47,23 @@ echo "   Dependencies installed"
 echo ""
 echo "⚙️  Setting up environment..."
 if [ ! -f ".env" ]; then
-    cp example.env .env
-    echo "   Created .env from example.env"
-    echo "   ⚠️  Please review .env and update values if needed"
+  cp example.env .env
+  echo "   Created .env from example.env"
+  echo "   ⚠️  Please review .env and update values if needed"
 else
-    echo "   .env already exists"
+  echo "   .env already exists"
 fi
 
 # Start Docker containers
 echo ""
 echo "🐳 Starting Docker containers..."
-if command -v docker &> /dev/null; then
-    docker compose up -d
-    echo "   Containers started"
-    echo "   Waiting for databases to be ready..."
-    sleep 3
+if command -v docker &>/dev/null; then
+  docker compose up -d
+  echo "   Containers started"
+  echo "   Waiting for databases to be ready..."
+  sleep 3
 else
-    echo "   ⚠️  Docker not found. Please start databases manually."
+  echo "   ⚠️  Docker not found. Please start databases manually."
 fi
 
 # Run migrations
@@ -78,24 +78,30 @@ echo "   Gate migrations complete"
 echo ""
 echo "🔐 Setting up JWT keys..."
 if [ ! -f "backend/keys/private.pem" ] || [ ! -f "gate/keys/public.pem" ]; then
-    chmod +x scripts/generate_keys.sh
-    scripts/generate_keys.sh
+  chmod +x scripts/generate_keys.sh
+  scripts/generate_keys.sh
 else
-    echo "   Keys already exist, skipping..."
+  echo "   Keys already exist, skipping..."
 fi
 
 # Install frontend dependencies
 echo ""
 echo "🎨 Setting up frontend..."
 if [ -d "frontend" ]; then
-    cd frontend
-    if command -v npm &> /dev/null; then
-        npm install
-        echo "   Frontend dependencies installed"
+  cd frontend
+  if command -v npm &>/dev/null; then
+    if command -v pnpm &>/dev/null; then
+      echo "pnpm found! using for installation ..."
     else
-        echo "   ⚠️  npm not found. Please install Node.js and run 'npm install' in frontend/"
+      echo "pnpm not found, installing pnpm locally ..."
+      npm install pnpm
     fi
-    cd "$PROJECT_ROOT"
+    pnpm install
+    echo "   Frontend dependencies installed"
+  else
+    echo "   ⚠️  npm not found. Please install Node.js and run 'npm install' in frontend/"
+  fi
+  cd "$PROJECT_ROOT"
 fi
 
 # Create Django superuser
@@ -103,13 +109,13 @@ echo ""
 echo "👤 Django Admin Superuser"
 read -p "   Create default superuser (admin/admin123)? (y/N): " create_superuser
 if [[ "$create_superuser" =~ ^[Yy]$ ]]; then
-    DJANGO_SUPERUSER_USERNAME=admin \
+  DJANGO_SUPERUSER_USERNAME=admin \
     DJANGO_SUPERUSER_EMAIL=admin@example.com \
     DJANGO_SUPERUSER_PASSWORD=admin123 \
     python backend/manage.py createsuperuser --noinput
-    echo "   ✅ Superuser created (username: admin, password: admin123)"
+  echo "   ✅ Superuser created (username: admin, password: admin123)"
 else
-    echo "   Skipped. Create manually: python backend/manage.py createsuperuser"
+  echo "   Skipped. Create manually: python backend/manage.py createsuperuser"
 fi
 
 echo ""
@@ -120,28 +126,28 @@ echo ""
 # Start servers
 read -p "🚀 Start backend server? (Y/n): " start_backend
 if [[ ! "$start_backend" =~ ^[Nn]$ ]]; then
+  echo ""
+  read -p "🎨 Also start frontend in background? (Y/n): " start_frontend
+
+  if [[ ! "$start_frontend" =~ ^[Nn]$ ]]; then
     echo ""
-    read -p "🎨 Also start frontend in background? (Y/n): " start_frontend
-    
-    if [[ ! "$start_frontend" =~ ^[Nn]$ ]]; then
-        echo ""
-        echo "Starting frontend (npm run dev)..."
-        cd frontend
-        npm run dev &
-        FRONTEND_PID=$!
-        cd "$PROJECT_ROOT"
-        echo "   Frontend started (PID: $FRONTEND_PID)"
-        echo ""
-    fi
-    
-    echo "Starting backend (python backend/manage.py runserver)..."
-    echo "   Press Ctrl+C to stop"
+    echo "Starting frontend (npm run dev)..."
+    cd frontend
+    npm run dev &
+    FRONTEND_PID=$!
+    cd "$PROJECT_ROOT"
+    echo "   Frontend started (PID: $FRONTEND_PID)"
     echo ""
-    python backend/manage.py runserver
+  fi
+
+  echo "Starting backend (python backend/manage.py runserver)..."
+  echo "   Press Ctrl+C to stop"
+  echo ""
+  python backend/manage.py runserver
 else
-    echo ""
-    echo "To start manually:"
-    echo "  Backend:  python backend/manage.py runserver"
-    echo "  Frontend: cd frontend && npm run dev"
-    echo ""
+  echo ""
+  echo "To start manually:"
+  echo "  Backend:  python backend/manage.py runserver"
+  echo "  Frontend: cd frontend && npm run dev"
+  echo ""
 fi
