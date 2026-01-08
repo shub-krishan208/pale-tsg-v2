@@ -5,7 +5,7 @@ export async function apiCall<T = any>(
   body: SessionData): Promise<{ data?: T }> {
   try {
     
-    const baseURL = process.env.BACKEND_URL || "http://localhost:8000";
+    const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL;
     const url = `${baseURL}${path}`;
 
     const res = await fetch(url, {
