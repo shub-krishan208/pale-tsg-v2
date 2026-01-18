@@ -241,6 +241,7 @@ class Command(BaseCommand):
                             "entryId": str(entry_log_id),
                             "roll": payload.get("roll"),
                             "scannedAt": ts.isoformat(),
+                            "createdAt": (override_created_at or ts).isoformat(),
                             "status": "EXPIRED",
                             "entryFlag": payload.get("entryFlag") or payload.get("entry_flag") or None,
                             "laptop": payload.get("laptop"),
@@ -292,6 +293,7 @@ class Command(BaseCommand):
                                 "entryId": str(open_entry.id),
                                 "roll": roll,
                                 "scannedAt": ts.isoformat(),
+                                "createdAt": open_entry.created_at.isoformat() if open_entry.created_at else ts.isoformat(),
                                 "status": "EXPIRED",
                                 "entryFlag": open_entry.entry_flag,
                                 "laptop": open_entry.laptop,
@@ -332,6 +334,7 @@ class Command(BaseCommand):
                         "entryId": str(new_entry.id),
                         "roll": roll,
                         "scannedAt": ts.isoformat(),
+                        "createdAt": (override_created_at or ts).isoformat(),
                         "status": new_entry.status,
                         "entryFlag": new_entry.entry_flag,
                         "laptop": new_entry.laptop,
@@ -428,7 +431,7 @@ class Command(BaseCommand):
                 if override_created_at:
                     ExitLog.objects.filter(id=exit_log.id).update(created_at=override_created_at)
                 
-                self._emit_exit_event(exit_log, roll)
+                self._emit_exit_event(exit_log, roll, override_created_at=override_created_at)
                 self._print_allow(roll, "EXITING", laptop, extra, str(exit_log.id), payload.get("exp"), "DUPLICATE_EXIT", options)
                 return
 
@@ -476,6 +479,7 @@ class Command(BaseCommand):
                     "entryId": str(entry_obj.id),
                     "roll": roll,
                     "scannedAt": entry_obj.scanned_at.isoformat() if entry_obj.scanned_at else ts.isoformat(),
+                    "createdAt": entry_obj.created_at.isoformat() if entry_obj.created_at else ts.isoformat(),
                     "status": "EXITED",
                     "entryFlag": entry_obj.entry_flag,
                     "laptop": entry_obj.laptop,
@@ -488,13 +492,14 @@ class Command(BaseCommand):
             )
 
         # Emit EXIT outbox event
-        self._emit_exit_event(exit_log, roll)
+        self._emit_exit_event(exit_log, roll, override_created_at=override_created_at)
 
         self.stdout.write("  scanned successfully: EXITED")
         self._print_allow(roll, "EXITING", laptop, extra, str(exit_log.id), payload.get("exp"), exit_flag, options)
 
-    def _emit_exit_event(self, exit_log, roll):
+    def _emit_exit_event(self, exit_log, roll, override_created_at=None):
         """Emit an EXIT outbox event for syncing to backend."""
+        created_at = override_created_at or exit_log.created_at or exit_log.scanned_at
         OutboxEvent.objects.create(
             event_type="EXIT",
             payload={
@@ -504,6 +509,7 @@ class Command(BaseCommand):
                 "entryId": str(exit_log.entry_id_id) if exit_log.entry_id_id else None,
                 "roll": roll,
                 "scannedAt": exit_log.scanned_at.isoformat() if exit_log.scanned_at else None,
+                "createdAt": created_at.isoformat() if created_at else None,
                 "exitFlag": exit_log.exit_flag,
                 "laptop": exit_log.laptop,
                 "extra": exit_log.extra or [],
