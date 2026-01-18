@@ -148,8 +148,8 @@ def summary(request):
     
     # Today's counts
     today_entries = EntryLog.objects.filter(
-        scanned_at__gte=today_start,
-        status__in=['ENTERED', 'EXITED']
+        created_at__gte=today_start,
+        status__in=['ENTERED', 'EXITED', 'EXPIRED']
     ).count()
     
     today_exits = ExitLog.objects.filter(
@@ -162,10 +162,10 @@ def summary(request):
     # Hourly breakdown for today (entries and exits per hour)
     hourly_entries = list(
         EntryLog.objects.filter(
-            scanned_at__gte=today_start,
-            status__in=['ENTERED', 'EXITED']
+            created_at__gte=today_start,
+            status__in=['ENTERED', 'EXITED', 'EXPIRED']
         )
-        .annotate(hour=TruncHour('scanned_at'))
+        .annotate(hour=TruncHour('created_at'))
         .values('hour')
         .annotate(count=Count('id'))
         .order_by('hour')
@@ -198,10 +198,10 @@ def summary(request):
     # 7-day trend (daily entries and exits)
     daily_entries = list(
         EntryLog.objects.filter(
-            scanned_at__gte=seven_days_ago,
-            status__in=['ENTERED', 'EXITED']
+            created_at__gte=seven_days_ago,
+            status__in=['ENTERED', 'EXITED', 'EXPIRED']
         )
-        .annotate(date=TruncDate('scanned_at'))
+        .annotate(date=TruncDate('created_at'))
         .values('date')
         .annotate(count=Count('id'))
         .order_by('date')
