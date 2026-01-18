@@ -29,6 +29,11 @@ class EntryLog(models.Model):
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     scanned_at = models.DateTimeField(null=True, blank=True)
+    source = models.CharField(max_length=20, null=True, blank=True)   # GATE / WEB / APP
+    os = models.CharField(max_length=20, null=True, blank=True)       # android / ios / linux
+    device_id = models.CharField(max_length=100, null=True, blank=True)
+
+    device_meta = models.JSONField(default=dict, blank=True)
     
     class Meta:
         app_label = "entries"
@@ -64,7 +69,12 @@ class ExitLog(models.Model):
     
     laptop = models.CharField(max_length=150, null=True, blank=True)
     extra = models.JSONField(default=list, blank=True)
+    source = models.CharField(max_length=20, null=True, blank=True)   # GATE / WEB / APP
+    os = models.CharField(max_length=20, null=True, blank=True)       # android / ios / linux
+    device_id = models.CharField(max_length=100, null=True, blank=True)
+
     device_meta = models.JSONField(default=dict, blank=True)
+ 
     
     # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
