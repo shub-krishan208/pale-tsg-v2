@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Library Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Outfit', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            850: '#1a2234',
+                            925: '#0d1321',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #0d1321;
+            --bg-card: #1a2234;
+            --accent-teal: #2dd4bf;
+            --accent-amber: #fbbf24;
+            --accent-rose: #fb7185;
+            --accent-violet: #a78bfa;
+        }
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 50%, var(--bg-primary) 100%);
+            min-height: 100vh;
+        }
+        .card-glow {
+            box-shadow: 0 0 40px -10px rgba(45, 212, 191, 0.15);
+        }
+        .stat-card {
+            background: linear-gradient(145deg, rgba(26, 34, 52, 0.9), rgba(13, 19, 33, 0.95));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .pulse-dot {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .kiosk-mode .stat-value {
+            font-size: 4rem;
+        }
+        .kiosk-mode .stat-label {
+            font-size: 1.25rem;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="font-sans text-slate-100 {% if is_kiosk %}kiosk-mode{% endif %}">
+    <!-- Header -->
+    <header class="{% if is_kiosk %}hidden{% endif %} border-b border-slate-800/50 bg-slate-925/80 backdrop-blur-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-slate-900" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-semibold tracking-tight">Library Dashboard</h1>
+                    <p class="text-sm text-slate-400">Real-time occupancy & trends</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span id="last-update" class="text-sm text-slate-500 font-mono"></span>
+                <span class="flex items-center gap-2 text-sm">
+                    <span class="w-2 h-2 rounded-full bg-teal-400 pulse-dot"></span>
+                    <span class="text-slate-400">Live</span>
+                </span>
+                <a href="/admin/" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors">
+                    Admin Panel
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Kiosk Header -->
+    <header class="{% if not is_kiosk %}hidden{% endif %} py-8 text-center">
+        <h1 class="text-4xl font-bold tracking-tight mb-2">Library Status</h1>
+        <div class="flex items-center justify-center gap-3">
+            <span class="w-3 h-3 rounded-full bg-teal-400 pulse-dot"></span>
+            <span class="text-xl text-slate-400">Live</span>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 fade-in" style="animation-delay: 0.1s;">
+            <!-- Current Inside -->
+            <div class="stat-card rounded-2xl p-6 card-glow">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-teal-500/10">
+                        <svg class="w-6 h-6 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Currently Inside</p>
+                <p id="current-inside" class="stat-value text-5xl font-bold text-teal-400 font-mono">--</p>
+                <p class="text-sm text-slate-500 mt-2">people in the library</p>
+            </div>
+
+            <!-- Today Entries -->
+            <div class="stat-card rounded-2xl p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-amber-500/10">
+                        <svg class="w-6 h-6 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Entries Today</p>
+                <p id="today-entries" class="stat-value text-5xl font-bold text-amber-400 font-mono">--</p>
+                <p class="text-sm text-slate-500 mt-2">total check-ins</p>
+            </div>
+
+            <!-- Today Exits -->
+            <div class="stat-card rounded-2xl p-6">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="p-3 rounded-xl bg-rose-500/10">
+                        <svg class="w-6 h-6 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </div>
+                </div>
+                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Exits Today</p>
+                <p id="today-exits" class="stat-value text-5xl font-bold text-rose-400 font-mono">--</p>
+                <p class="text-sm text-slate-500 mt-2">total check-outs</p>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="{% if is_kiosk %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in" style="animation-delay: 0.2s;">
+            <!-- Hourly Chart -->
+            <div class="stat-card rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Today's Hourly Activity
+                </h3>
+                <div class="h-64">
+                    <canvas id="hourly-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- 7-Day Trend -->
+            <div class="stat-card rounded-2xl p-6">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+                    </svg>
+                    7-Day Trend
+                </h3>
+                <div class="h-64">
+                    <canvas id="daily-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kiosk Large Display -->
+        <div class="{% if not is_kiosk %}hidden{% endif %} mt-8 text-center">
+            <div class="inline-block stat-card rounded-3xl p-12">
+                <p class="text-2xl text-slate-400 mb-4">Updated</p>
+                <p id="kiosk-time" class="text-3xl font-mono text-slate-300">--:--</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Error Toast -->
+    <div id="error-toast" class="fixed bottom-6 right-6 bg-rose-500/90 text-white px-6 py-4 rounded-xl shadow-2xl hidden">
+        <p class="font-medium">Connection Error</p>
+        <p class="text-sm opacity-80">Retrying in a few seconds...</p>
+    </div>
+
+    <script>
+        const API_URL = '{{ api_base_url }}';
+        const KIOSK_TOKEN = '{{ kiosk_token }}';
+        const IS_KIOSK = {{ is_kiosk|yesno:"true,false" }};
+        const REFRESH_INTERVAL = IS_KIOSK ? 30000 : 60000; // 30s kiosk, 60s staff
+
+        let hourlyChart = null;
+        let dailyChart = null;
+
+        // Chart.js defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
+        Chart.defaults.font.family = 'Outfit, sans-serif';
+
+        function formatTime(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        }
+
+        function formatDate(dateStr) {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        function formatHour(hourStr) {
+            const d = new Date(hourStr);
+            return d.toLocaleTimeString('en-US', { hour: '2-digit', hour12: true });
+        }
+
+        async function fetchSummary() {
+            let url = API_URL;
+            if (KIOSK_TOKEN) {
+                url += `?token=${encodeURIComponent(KIOSK_TOKEN)}`;
+            }
+            
+            try {
+                const response = await fetch(url, {
+                    credentials: 'include',
+                    headers: KIOSK_TOKEN ? { 'X-Kiosk-Token': KIOSK_TOKEN } : {}
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateDashboard(data);
+                document.getElementById('error-toast').classList.add('hidden');
+            } catch (error) {
+                console.error('Failed to fetch summary:', error);
+                document.getElementById('error-toast').classList.remove('hidden');
+            }
+        }
+
+        function updateDashboard(data) {
+            // Update stats
+            document.getElementById('current-inside').textContent = data.today.current_inside;
+            document.getElementById('today-entries').textContent = data.today.entries;
+            document.getElementById('today-exits').textContent = data.today.exits;
+            
+            // Update timestamp
+            const now = new Date(data.timestamp);
+            document.getElementById('last-update').textContent = `Updated ${formatTime(data.timestamp)}`;
+            
+            const kioskTime = document.getElementById('kiosk-time');
+            if (kioskTime) {
+                kioskTime.textContent = formatTime(data.timestamp);
+            }
+
+            // Update charts (only if not kiosk mode)
+            if (!IS_KIOSK) {
+                updateHourlyChart(data.hourly);
+                updateDailyChart(data.daily_7d);
+            }
+        }
+
+        function updateHourlyChart(hourlyData) {
+            const ctx = document.getElementById('hourly-chart').getContext('2d');
+            
+            const labels = hourlyData.map(h => formatHour(h.hour));
+            const entries = hourlyData.map(h => h.entries);
+            const exits = hourlyData.map(h => h.exits);
+
+            if (hourlyChart) {
+                hourlyChart.data.labels = labels;
+                hourlyChart.data.datasets[0].data = entries;
+                hourlyChart.data.datasets[1].data = exits;
+                hourlyChart.update('none');
+            } else {
+                hourlyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Entries',
+                                data: entries,
+                                backgroundColor: 'rgba(251, 191, 36, 0.8)',
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Exits',
+                                data: exits,
+                                backgroundColor: 'rgba(251, 113, 133, 0.8)',
+                                borderRadius: 4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { usePointStyle: true, padding: 20 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.03)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateDailyChart(dailyData) {
+            const ctx = document.getElementById('daily-chart').getContext('2d');
+            
+            const labels = dailyData.map(d => formatDate(d.date));
+            const entries = dailyData.map(d => d.entries);
+            const exits = dailyData.map(d => d.exits);
+
+            if (dailyChart) {
+                dailyChart.data.labels = labels;
+                dailyChart.data.datasets[0].data = entries;
+                dailyChart.data.datasets[1].data = exits;
+                dailyChart.update('none');
+            } else {
+                dailyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Entries',
+                                data: entries,
+                                borderColor: '#fbbf24',
+                                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                            },
+                            {
+                                label: 'Exits',
+                                data: exits,
+                                borderColor: '#fb7185',
+                                backgroundColor: 'rgba(251, 113, 133, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { usePointStyle: true, padding: 20 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255,255,255,0.03)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initial fetch
+        fetchSummary();
+
+        // Auto-refresh
+        setInterval(fetchSummary, REFRESH_INTERVAL);
+    </script>
+</body>
+</html>
+

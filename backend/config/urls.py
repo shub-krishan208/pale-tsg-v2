@@ -6,4 +6,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/entries/', include('apps.entries.urls')),
     path('api/sync/', include('apps.sync.urls')),
+    path('dashboard/', include('apps.dashboard.urls')),
 ]

@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'shared.apps.users',
     'shared.apps.entries',
     'apps.sync',
+    'apps.dashboard',
 ]
 
 MIDDLEWARE = [
@@ -67,7 +68,9 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'backend' / 'apps' / 'dashboard' / 'templates',
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -128,3 +131,14 @@ REST_FRAMEWORK = {
 # Gate sync (single gate + single backend) API key
 GATE_API_KEY = os.environ.get("GATE_API_KEY")
 SYNC_MAX_EVENTS = int(os.environ.get("SYNC_MAX_EVENTS", "500"))
+
+# Cache configuration (in-memory for summary API)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'unique-snowflake',
+    }
+}
+
+# Dashboard kiosk token for read-only public access
+DASHBOARD_KIOSK_TOKEN = os.environ.get("DASHBOARD_KIOSK_TOKEN", "")
