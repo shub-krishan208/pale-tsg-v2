@@ -292,11 +292,15 @@ class Command(BaseCommand):
                                 "type": "ENTRY",
                                 "entryId": str(open_entry.id),
                                 "roll": roll,
-                                "scannedAt": None,
+                                "scannedAt": ts.isoformat(),
                                 "status": "EXPIRED",
                                 "entryFlag": open_entry.entry_flag,
                                 "laptop": open_entry.laptop,
                                 "extra": open_entry.extra or [],
+                                "deviceMeta": open_entry.device_meta or {},
+                                "deviceId": open_entry.device_id,
+                                "source": open_entry.source,
+                                "os": open_entry.os,
                             },
                         )
                 else:
@@ -463,6 +467,26 @@ class Command(BaseCommand):
             # ## [FIX]: Removed 'scanned_at=ts' from this update.
             # 'scanned_at' on EntryLog refers to entry time. Overwriting it with exit time destroys data.
             EntryLog.objects.filter(id=entry_obj.id).update(status="EXITED")
+            
+            # Emit ENTRY event to sync status change to backend
+            OutboxEvent.objects.create(
+                event_type="ENTRY",
+                payload={
+                    "eventId": None,
+                    "type": "ENTRY",
+                    "entryId": str(entry_obj.id),
+                    "roll": roll,
+                    "scannedAt": entry_obj.scanned_at.isoformat() if entry_obj.scanned_at else ts.isoformat(),
+                    "status": "EXITED",
+                    "entryFlag": entry_obj.entry_flag,
+                    "laptop": entry_obj.laptop,
+                    "extra": entry_obj.extra or [],
+                    "deviceMeta": entry_obj.device_meta or {},
+                    "deviceId": entry_obj.device_id,
+                    "source": entry_obj.source,
+                    "os": entry_obj.os,
+                },
+            )
 
         # Emit EXIT outbox event
         self._emit_exit_event(exit_log, roll)

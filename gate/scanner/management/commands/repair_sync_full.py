@@ -107,6 +107,10 @@ class Command(BaseCommand):
                         "entryFlag": e.entry_flag,
                         "laptop": e.laptop,
                         "extra": e.extra or [],
+                        "deviceMeta": e.device_meta or {},
+                        "deviceId": e.device_id,
+                        "source": e.source,
+                        "os": e.os,
                     }
                 )
             resp = _post_events(url, api_key, events, timeout_s=timeout_s)
@@ -138,6 +142,9 @@ class Command(BaseCommand):
                         "laptop": x.laptop,
                         "extra": x.extra or [],
                         "deviceMeta": x.device_meta or {},
+                        "deviceId": x.device_id,
+                        "source": x.source,
+                        "os": x.os,
                     }
                 )
             resp = _post_events(url, api_key, events, timeout_s=timeout_s)
