@@ -30,42 +30,7 @@ from django.conf import settings
 from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 
-
-# Data variety configuration (same as generate_test_data)
-LAPTOP_OPTIONS = [
-    "Dell XPS 15",
-    "MacBook Pro M4",
-    "ThinkPad X1 Carbon",
-    "HP Spectre",
-    "ASUS ROG",
-    "HP Victus RTX 2050",
-    "",
-    "",
-    "",
-    "",  # 40% empty rate
-]
-
-EXTRA_ITEMS = [
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Atomic Habits", "type": "books"}],
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Charger", "type": "gadgets"}],
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Water Bottle", "type": "gadgets"}],
-    [{"name": "Charger", "type": "gadgets"}, {"name": "Atomic Habits", "type": "books"}],
-    [{"name": "Notebook", "type": "stationery"}],
-    [],
-    [],
-    [],
-    [],  # ~45% empty
-]
-
-DEVICE_META_TEMPLATES = [
-    {"os": "android", "source": "APP"},
-    {"os": "android", "source": "APP"},
-    {"os": "ios", "source": "APP"},
-    {"os": "ios", "source": "APP"},
-    {"os": "linux", "source": "WEB"},
-    {"os": "windows", "source": "WEB"},
-    {"os": "macos", "source": "WEB"},
-]
+from scanner.test_fixtures import DEVICE_META_TEMPLATES, EXTRA_ITEMS, LAPTOP_OPTIONS, biased_hour
 
 
 def parse_roll_range(rolls_str: str) -> list[str]:
@@ -118,11 +83,11 @@ def load_private_key(key_path: str = None) -> str:
         return f.read()
 
 
-def random_time_in_range(base_date: datetime, hour_start: int, hour_end: int) -> datetime:
+def random_time_in_range(base_date: datetime, hour_start: int, hour_end: int, bias: str = "none") -> datetime:
     """Generate random datetime within hour range on given date."""
     if hour_end <= hour_start:
         hour_end = 24
-    random_hour = random.randint(hour_start, hour_end - 1)
+    random_hour = biased_hour(hour_start, hour_end, bias)
     random_minute = random.randint(0, 59)
     random_second = random.randint(0, 59)
     
@@ -328,8 +293,8 @@ class Command(BaseCommand):
         stats: dict,
     ) -> tuple[str | None, datetime | None]:
         """Generate and process an entry token."""
-        # Random entry time
-        created_at = random_time_in_range(target_date, hour_start, hour_end)
+        # Random entry time (biased towards early hours)
+        created_at = random_time_in_range(target_date, hour_start, hour_end, bias="entry")
         
         # Calculate scan time
         if random.random() < late_scan_rate:
@@ -398,8 +363,8 @@ class Command(BaseCommand):
         stats: dict,
     ):
         """Generate and process an exit token."""
-        # Exit 1-8 hours after entry
-        exit_offset = timedelta(hours=random.uniform(1, 8))
+        # Exit 1-8 hours after entry (biased towards longer stays → later exits)
+        exit_offset = timedelta(hours=random.triangular(1, 8, 5))
         exit_time = entry_time + exit_offset
         scanned_at = exit_time + timedelta(minutes=random.randint(0, 5))
         
@@ -419,7 +384,7 @@ class Command(BaseCommand):
         
         if dry_run:
             if verbose:
-                self.stdout.write(f"  [DRY] Exit: {roll} @ {exit_time}")
+                self.stdout.write(f"  [DRY] Exit:  {roll} @ {exit_time}")
             stats["exits_processed"] += 1
             return
         
@@ -432,6 +397,7 @@ class Command(BaseCommand):
                 mode="exit",
                 test_mode=True,
                 override_scanned_at=scanned_at.isoformat(),
+                override_created_at=exit_time.isoformat(),
                 stdout=out,
             )
             if verbose:

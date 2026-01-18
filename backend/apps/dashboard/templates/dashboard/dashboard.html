@@ -286,31 +286,23 @@
                 hourlyChart.data.datasets[0].data = entries;
                 hourlyChart.data.datasets[1].data = exits;
                 hourlyChart.update('none');
-            } else {
+            }else {
                 hourlyChart = new Chart(ctx, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [
                             {
                                 label: 'Entries',
                                 data: entries,
-                                borderColor: '#fbbf24',
-                                backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                                fill: true,
-                                tension: 0.4,
-                                pointRadius: 4,
-                                pointHoverRadius: 6,
+                                backgroundColor: 'rgba(251, 191, 36, 0.8)',
+                                borderRadius: 4,
                             },
                             {
                                 label: 'Exits',
                                 data: exits,
-                                borderColor: '#fb7185',
-                                backgroundColor: 'rgba(251, 113, 133, 0.1)',
-                                fill: true,
-                                tension: 0.4,
-                                pointRadius: 4,
-                                pointHoverRadius: 6,
+                                backgroundColor: 'rgba(251, 113, 133, 0.8)',
+                                borderRadius: 4,
                             }
                         ]
                     },
@@ -351,21 +343,29 @@
                 dailyChart.update('none');
             } else {
                 dailyChart = new Chart(ctx, {
-                    type: 'bar',
+                    type: 'line',
                     data: {
                         labels: labels,
                         datasets: [
                             {
                                 label: 'Entries',
                                 data: entries,
-                                backgroundColor: 'rgba(251, 191, 36, 0.8)',
-                                borderRadius: 4,
+                                borderColor: '#fbbf24',
+                                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
                             },
                             {
                                 label: 'Exits',
                                 data: exits,
-                                backgroundColor: 'rgba(251, 113, 133, 0.8)',
-                                borderRadius: 4,
+                                borderColor: '#fb7185',
+                                backgroundColor: 'rgba(251, 113, 133, 0.1)',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
                             }
                         ]
                     },

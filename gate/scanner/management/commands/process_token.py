@@ -1,6 +1,5 @@
 import json
 import sys
-import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -25,7 +24,7 @@ def parse_iso_datetime(dt_str: str) -> datetime:
             dt = timezone.make_aware(dt)
         return dt
     except ValueError as e:
-        raise ValueError(f"Invalid datetime format: {dt_str}. Use ISO format (e.g., 2026-01-10T14:30:00Z)")
+        raise ValueError(f"Error: {e}\nInvalid datetime format: {dt_str}. Use ISO format (e.g., 2026-01-10T14:30:00Z)")
 
 
 class Command(BaseCommand):

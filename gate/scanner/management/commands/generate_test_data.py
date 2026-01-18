@@ -27,46 +27,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from scanner.models import OutboxEvent
+from scanner.test_fixtures import DEVICE_META_TEMPLATES, EXTRA_ITEMS, LAPTOP_OPTIONS, biased_hour
 from shared.apps.entries.models import EntryLog, ExitLog
 from shared.apps.users.models import User
-
-
-# Data variety configuration
-LAPTOP_OPTIONS = [
-    "Dell XPS 15",
-    "MacBook Pro M4",
-    "ThinkPad X1 Carbon",
-    "HP Spectre",
-    "ASUS ROG",
-    "HP Victus RTX 2050",
-    "",
-    "",
-    "",
-    "",  # 40% empty rate
-]
-
-EXTRA_ITEMS = [
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Atomic Habits", "type": "books"}],
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Charger", "type": "gadgets"}],
-    [{"name": "Keys", "type": "gadgets"}, {"name": "Water Bottle", "type": "gadgets"}],
-    [{"name": "Charger", "type": "gadgets"}, {"name": "Atomic Habits", "type": "books"}],
-    [{"name": "Notebook", "type": "stationery"}],
-    [],
-    [],
-    [],
-    [],  # ~45% empty
-]
-
-DEVICE_META_TEMPLATES = [
-    {"os": "android", "source": "APP"},
-    {"os": "android", "source": "APP"},
-    {"os": "ios", "source": "APP"},
-    {"os": "ios", "source": "APP"},
-    {"os": "linux", "source": "WEB"},
-    {"os": "windows", "source": "WEB"},
-    {"os": "macos", "source": "WEB"},
-    {"source": "GATE"},  # For forced entries
-]
 
 
 def parse_roll_range(rolls_str: str) -> list[str]:
@@ -111,6 +74,7 @@ def random_datetime_in_range(
     end_date: datetime,
     hour_start: int,
     hour_end: int,
+    bias: str = "none",
 ) -> datetime:
     """Generate random datetime within date range and hour range."""
     # Random date between start and end
@@ -118,10 +82,10 @@ def random_datetime_in_range(
     random_days = random.randint(0, max(0, days_diff))
     target_date = start_date + timedelta(days=random_days)
     
-    # Random time within hour range
+    # Random time within hour range (with optional bias)
     if hour_end <= hour_start:
         hour_end = 24
-    random_hour = random.randint(hour_start, hour_end - 1)
+    random_hour = biased_hour(hour_start, hour_end, bias)
     random_minute = random.randint(0, 59)
     random_second = random.randint(0, 59)
     
@@ -353,8 +317,8 @@ class Command(BaseCommand):
     ) -> EntryLog:
         """Create an entry log with realistic data."""
         
-        # Generate timestamps
-        created_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end)
+        # Generate timestamps (biased towards early hours)
+        created_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end, bias="entry")
         
         # scanned_at is usually within a few minutes of created_at (token generation -> scan)
         if random.random() < late_scan_rate:
@@ -385,8 +349,8 @@ class Command(BaseCommand):
         # For now, mark as ENTERED; will be updated to EXITED if exit is created
         status = "ENTERED"
         
-        source = device_meta.get("source", "TEST")
         os_name = device_meta.get("os")
+        source = device_meta.get("source", "TEST")
         
         # Create entry
         entry = EntryLog.objects.create(
@@ -397,7 +361,7 @@ class Command(BaseCommand):
             laptop=laptop,
             extra=extra,
             scanned_at=scanned_at,
-            source="TEST",
+            source=source,
             os=os_name,
             device_id=f"test-device-{user.roll}",
             device_meta=device_meta,
@@ -467,8 +431,8 @@ class Command(BaseCommand):
     ):
         """Create an exit log linked to an entry."""
         
-        # Exit happens 1-8 hours after entry scan
-        exit_offset = timedelta(hours=random.uniform(1, 8))
+        # Exit happens 1-8 hours after entry scan (biased towards longer stays → later exits)
+        exit_offset = timedelta(hours=random.triangular(1, 8, 5))
         scanned_at = entry.scanned_at + exit_offset
         
         # Random data - often same as entry, sometimes different
@@ -590,7 +554,7 @@ class Command(BaseCommand):
         stats: dict,
     ):
         """Create an orphan exit (no matching entry)."""
-        scanned_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end)
+        scanned_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end, bias="exit")
         
         laptop = random.choice(LAPTOP_OPTIONS) or None
         extra = random.choice(EXTRA_ITEMS)
