@@ -109,7 +109,7 @@ class Command(BaseCommand):
                             )
 
                 self.stdout.write(
-                    f"synced batch={len(batch)} acked={len(acked_ids)} rejected={len(rejected_map)}"
+                    f"{timezone.now().strftime('%Y-%m-%d %H:%M:%S')} | synced batch={len(batch)} acked={len(acked_ids)} rejected={len(rejected_map)}"
                 )
 
             except urllib.error.HTTPError as e:
@@ -145,6 +145,6 @@ class Command(BaseCommand):
             batch, 
             fields=["attempt_count", "last_attempt_at", "next_retry_at", "last_error"]
         )
-        self.stderr.write(f"sync failed; scheduled retry for {len(batch)} events: {err}")
+        self.stderr.write(f"{timezone.now().strftime('%Y-%m-%d %H:%M:%S')} | sync failed; scheduled retry for {len(batch)} events: {err}")
     
 

@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Library Dashboard</title>
+    <script>
+        // Prevent flash of wrong theme
+        (function() {
+            const stored = localStorage.getItem('dashboard-theme');
+            if (stored === 'light') {
+                document.documentElement.setAttribute('data-theme', 'light');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+            }
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,23 +41,69 @@
     <style>
         :root {
             --bg-primary: #0d1321;
+            --bg-secondary: #1a1a2e;
             --bg-card: #1a2234;
+            --bg-card-alt: #0d1321;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border-color: rgba(255, 255, 255, 0.05);
+            --header-bg: rgba(13, 19, 33, 0.8);
             --accent-teal: #2dd4bf;
             --accent-amber: #fbbf24;
             --accent-rose: #fb7185;
             --accent-violet: #a78bfa;
         }
+        [data-theme="light"] {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #e2e8f0;
+            --bg-card: #ffffff;
+            --bg-card-alt: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --header-bg: rgba(248, 250, 252, 0.9);
+            --accent-teal: #0d9488;
+            --accent-amber: #d97706;
+            --accent-rose: #e11d48;
+            --accent-violet: #7c3aed;
+        }
         body {
-            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 50%, var(--bg-primary) 100%);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, var(--bg-primary) 100%);
             min-height: 100vh;
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
         }
         .card-glow {
             box-shadow: 0 0 40px -10px rgba(45, 212, 191, 0.15);
         }
+        [data-theme="light"] .card-glow {
+            box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.1);
+        }
         .stat-card {
-            background: linear-gradient(145deg, rgba(26, 34, 52, 0.9), rgba(13, 19, 33, 0.95));
+            background: linear-gradient(145deg, var(--bg-card), var(--bg-card-alt));
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+        [data-theme="light"] .stat-card {
+            background: var(--bg-card);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        }
+        .header-bg {
+            background: var(--header-bg);
+            border-color: var(--border-color);
+            transition: background 0.3s ease, border-color 0.3s ease;
+        }
+        .text-adaptive {
+            color: var(--text-primary);
+        }
+        .text-adaptive-secondary {
+            color: var(--text-secondary);
+        }
+        .text-adaptive-muted {
+            color: var(--text-muted);
         }
         .pulse-dot {
             animation: pulse 2s infinite;
@@ -68,11 +125,191 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .theme-toggle {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            background: transparent;
+            border: 1px solid var(--border-color);
+        }
+        .theme-toggle:hover {
+            background: var(--border-color);
+            transform: scale(1.05);
+        }
+        .theme-toggle svg {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.3s ease;
+        }
+        .theme-toggle:hover svg {
+            transform: rotate(15deg);
+        }
+        .icon-sun, .icon-moon {
+            color: var(--text-secondary);
+        }
+        [data-theme="dark"]  .icon-sun { display: none; }
+        [data-theme="light"] .icon-moon { display: none; }
+        .admin-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        .admin-btn:hover {
+            background: var(--bg-card-alt);
+        }
+        [data-theme="light"] .admin-btn:hover {
+            background: var(--bg-secondary);
+        }
+        /* Segmented toggle controls */
+        .segment-toggle {
+            display: inline-flex;
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 3px;
+            gap: 2px;
+        }
+        .segment-btn {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .segment-btn:hover {
+            color: var(--text-primary);
+        }
+        .segment-btn.active {
+            background: var(--accent-teal);
+            color: #0f172a;
+        }
+        [data-theme="light"] .segment-btn.active {
+            color: #ffffff;
+        }
+        /* Custom date inputs */
+        .date-input {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .date-input:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+        /* Preset buttons */
+        .preset-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .preset-btn:hover {
+            border-color: var(--accent-teal);
+            color: var(--text-primary);
+        }
+        .preset-btn.active {
+            background: var(--accent-teal);
+            color: #0f172a;
+            border-color: var(--accent-teal);
+        }
+        [data-theme="light"] .preset-btn.active {
+            color: #ffffff;
+        }
+        /* Apply button */
+        .apply-btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #0f172a;
+            background: var(--accent-teal);
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .apply-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+        [data-theme="light"] .apply-btn {
+            color: #ffffff;
+        }
+        /* Select dropdowns */
+        .custom-select {
+            background: var(--bg-card-alt);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+        }
+        .custom-select:focus {
+            outline: none;
+            border-color: var(--accent-teal);
+        }
+        /* Chart range label */
+        .range-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Collapsible section */
+        .collapsible-header {
+            cursor: pointer;
+            user-select: none;
+        }
+        .collapsible-header:hover {
+            opacity: 0.8;
+        }
+        .collapse-icon {
+            transition: transform 0.2s ease;
+        }
+        .collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        /* Loading spinner */
+        .chart-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-muted);
+        }
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--accent-teal);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="font-sans text-slate-100 {% if is_kiosk %}kiosk-mode{% endif %}">
+<body class="font-sans {% if is_kiosk %}kiosk-mode{% endif %}">
     <!-- Header -->
-    <header class="{% if is_kiosk %}hidden{% endif %} border-b border-slate-800/50 bg-slate-925/80 backdrop-blur-sm sticky top-0 z-50">
+    <header class="{% if is_kiosk %}hidden{% endif %} border-b header-bg backdrop-blur-sm sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center">
@@ -81,17 +318,25 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-semibold tracking-tight">Library Dashboard</h1>
-                    <p class="text-sm text-slate-400">Real-time occupancy & trends</p>
+                    <h1 class="text-xl font-semibold tracking-tight text-adaptive">Library Dashboard</h1>
+                    <p class="text-sm text-adaptive-secondary">Real-time occupancy & trends</p>
                 </div>
             </div>
             <div class="flex items-center gap-4">
-                <span id="last-update" class="text-sm text-slate-500 font-mono"></span>
+                <span id="last-update" class="text-sm text-adaptive-muted font-mono"></span>
                 <span class="flex items-center gap-2 text-sm">
                     <span class="w-2 h-2 rounded-full bg-teal-400 pulse-dot"></span>
-                    <span class="text-slate-400">Live</span>
+                    <span class="text-adaptive-secondary">Live</span>
                 </span>
-                <a href="/admin/" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-sm font-medium transition-colors">
+                <button id="theme-toggle" class="theme-toggle" title="Toggle theme" aria-label="Toggle dark/light mode">
+                    <svg class="icon-sun" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>      
+                    <svg class="icon-moon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                    </svg>
+                </button>
+                <a href="/admin/" class="admin-btn px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                     Admin Panel
                 </a>
             </div>
@@ -100,10 +345,10 @@
 
     <!-- Kiosk Header -->
     <header class="{% if not is_kiosk %}hidden{% endif %} py-8 text-center">
-        <h1 class="text-4xl font-bold tracking-tight mb-2">Library Status</h1>
+        <h1 class="text-4xl font-bold tracking-tight mb-2 text-adaptive">Library Status</h1>
         <div class="flex items-center justify-center gap-3">
             <span class="w-3 h-3 rounded-full bg-teal-400 pulse-dot"></span>
-            <span class="text-xl text-slate-400">Live</span>
+            <span class="text-xl text-adaptive-secondary">Live</span>
         </div>
     </header>
 
@@ -120,9 +365,9 @@
                         </svg>
                     </div>
                 </div>
-                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Currently Inside</p>
-                <p id="current-inside" class="stat-value text-5xl font-bold text-teal-400 font-mono">--</p>
-                <p class="text-sm text-slate-500 mt-2">people in the library</p>
+                <p class="stat-label text-sm text-adaptive-secondary uppercase tracking-wider mb-1">Currently Inside</p>
+                <p id="current-inside" class="stat-value text-5xl font-bold font-mono" style="color: var(--accent-teal)">--</p>
+                <p class="text-sm text-adaptive-muted mt-2">people in the library</p>
             </div>
 
             <!-- Today Entries -->
@@ -134,9 +379,9 @@
                         </svg>
                     </div>
                 </div>
-                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Entries Today</p>
-                <p id="today-entries" class="stat-value text-5xl font-bold text-amber-400 font-mono">--</p>
-                <p class="text-sm text-slate-500 mt-2">total check-ins</p>
+                <p class="stat-label text-sm text-adaptive-secondary uppercase tracking-wider mb-1">Entries Today</p>
+                <p id="today-entries" class="stat-value text-5xl font-bold font-mono" style="color: var(--accent-amber)">--</p>
+                <p class="text-sm text-adaptive-muted mt-2">total check-ins</p>
             </div>
 
             <!-- Today Exits -->
@@ -148,9 +393,9 @@
                         </svg>
                     </div>
                 </div>
-                <p class="stat-label text-sm text-slate-400 uppercase tracking-wider mb-1">Exits Today</p>
-                <p id="today-exits" class="stat-value text-5xl font-bold text-rose-400 font-mono">--</p>
-                <p class="text-sm text-slate-500 mt-2">total check-outs</p>
+                <p class="stat-label text-sm text-adaptive-secondary uppercase tracking-wider mb-1">Exits Today</p>
+                <p id="today-exits" class="stat-value text-5xl font-bold font-mono" style="color: var(--accent-rose)">--</p>
+                <p class="text-sm text-adaptive-muted mt-2">total check-outs</p>
             </div>
         </div>
 
@@ -158,8 +403,8 @@
         <div class="{% if is_kiosk %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in" style="animation-delay: 0.2s;">
             <!-- Hourly Chart -->
             <div class="stat-card rounded-2xl p-6">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2 text-adaptive">
+                    <svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                     Today's Hourly Activity
@@ -171,8 +416,8 @@
 
             <!-- 7-Day Trend -->
             <div class="stat-card rounded-2xl p-6">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2 text-adaptive">
+                    <svg class="w-5 h-5" style="color: var(--accent-teal)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
                     </svg>
                     7-Day Trend
@@ -183,11 +428,159 @@
             </div>
         </div>
 
+        <!-- Extended Trend Chart (Month/Year/Custom Range) -->
+        <div class="{% if is_kiosk %}hidden{% endif %} mt-6 fade-in" style="animation-delay: 0.3s;">
+            <div class="stat-card rounded-2xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-adaptive">
+                        <svg class="w-5 h-5" style="color: var(--accent-amber)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        Extended Trend
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-3">
+                        <!-- Month/Year Selectors (visible in month mode) -->
+                        <div id="trend-month-controls" class="flex items-center gap-2">
+                            <select id="trend-month-select" class="custom-select">
+                                <option value="1">January</option>
+                                <option value="2">February</option>
+                                <option value="3">March</option>
+                                <option value="4">April</option>
+                                <option value="5">May</option>
+                                <option value="6">June</option>
+                                <option value="7">July</option>
+                                <option value="8">August</option>
+                                <option value="9">September</option>
+                                <option value="10">October</option>
+                                <option value="11">November</option>
+                                <option value="12">December</option>
+                            </select>
+                            <select id="trend-year-select" class="custom-select"></select>
+                        </div>
+
+                        <!-- Year Only Selector (visible in year mode) -->
+                        <div id="trend-year-controls" class="hidden">
+                            <select id="trend-year-only-select" class="custom-select"></select>
+                        </div>
+                        
+                        <!-- Custom Range Controls (visible in range mode) -->
+                        <div id="trend-range-controls" class="hidden flex items-center gap-2">
+                            <input type="date" id="trend-start-date" class="date-input">
+                            <span class="text-adaptive-muted">to</span>
+                            <input type="date" id="trend-end-date" class="date-input">
+                            <button id="trend-apply-range" class="apply-btn">Apply</button>
+                        </div>
+
+                        <!-- View Toggle -->
+                        <div class="segment-toggle">
+                            <button class="segment-btn active" data-view="month" id="trend-view-month">Month</button>
+                            <button class="segment-btn" data-view="year" id="trend-view-year">Year</button>
+                            <button class="segment-btn" data-view="range" id="trend-view-range">Custom</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="trend-range-label" class="range-label mb-2"></div>
+                <div class="h-72 relative">
+                    <div id="trend-chart-loading" class="chart-loading absolute inset-0 hidden">
+                        <div class="spinner"></div>
+                    </div>
+                    <canvas id="trend-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Flag Analytics Section -->
+        <div class="{% if is_kiosk %}hidden{% endif %} mt-6 fade-in" style="animation-delay: 0.4s;">
+            <div class="stat-card rounded-2xl p-6">
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-4 collapsible-header" id="flags-header">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-adaptive">
+                        <svg class="w-5 h-5 collapse-icon" style="color: var(--accent-rose)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                        <svg class="w-5 h-5" style="color: var(--accent-rose)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 21v-4m0 0V5a2 2 0 012-2h6.5l1 1H21l-3 6 3 6h-8.5l-1-1H5a2 2 0 00-2 2zm9-13.5V9"></path>
+                        </svg>
+                        Flag Analytics
+                    </h3>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <!-- Preset Buttons -->
+                        <button class="preset-btn active" data-range="7d" id="flags-preset-7d">7 Days</button>
+                        <button class="preset-btn" data-range="30d" id="flags-preset-30d">30 Days</button>
+                        <button class="preset-btn" data-range="90d" id="flags-preset-90d">90 Days</button>
+                        <button class="preset-btn" data-range="year" id="flags-preset-year">This Year</button>
+                        <button class="preset-btn" data-range="custom" id="flags-preset-custom">Custom</button>
+                    </div>
+                </div>
+                
+                <!-- Custom Range Controls for Flags -->
+                <div id="flags-range-controls" class="hidden flex flex-wrap items-center gap-2 mb-4">
+                    <input type="date" id="flags-start-date" class="date-input">
+                    <span class="text-adaptive-muted">to</span>
+                    <input type="date" id="flags-end-date" class="date-input">
+                    <button id="flags-apply-range" class="apply-btn">Apply</button>
+                </div>
+                
+                <div id="flags-range-label" class="range-label mb-4"></div>
+                
+                <div id="flags-content">
+                    <!-- Pie Charts Row -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                        <!-- Entry Flags Pie Chart -->
+                        <div>
+                            <h4 class="text-sm font-medium text-adaptive-secondary mb-3 uppercase tracking-wider">Entry Flags Distribution</h4>
+                            <div class="h-56 relative">
+                                <div id="entry-pie-loading" class="chart-loading absolute inset-0 hidden">
+                                    <div class="spinner"></div>
+                                </div>
+                                <canvas id="entry-flags-pie"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Exit Flags Pie Chart -->
+                        <div>
+                            <h4 class="text-sm font-medium text-adaptive-secondary mb-3 uppercase tracking-wider">Exit Flags Distribution</h4>
+                            <div class="h-56 relative">
+                                <div id="exit-pie-loading" class="chart-loading absolute inset-0 hidden">
+                                    <div class="spinner"></div>
+                                </div>
+                                <canvas id="exit-flags-pie"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Histogram Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Entry Flags Histogram -->
+                        <div>
+                            <h4 class="text-sm font-medium text-adaptive-secondary mb-3 uppercase tracking-wider">Entry Flags Over Time</h4>
+                            <div class="h-64 relative">
+                                <div id="entry-hist-loading" class="chart-loading absolute inset-0 hidden">
+                                    <div class="spinner"></div>
+                                </div>
+                                <canvas id="entry-flags-hist"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Exit Flags Histogram -->
+                        <div>
+                            <h4 class="text-sm font-medium text-adaptive-secondary mb-3 uppercase tracking-wider">Exit Flags Over Time</h4>
+                            <div class="h-64 relative">
+                                <div id="exit-hist-loading" class="chart-loading absolute inset-0 hidden">
+                                    <div class="spinner"></div>
+                                </div>
+                                <canvas id="exit-flags-hist"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Kiosk Large Display -->
         <div class="{% if not is_kiosk %}hidden{% endif %} mt-8 text-center">
             <div class="inline-block stat-card rounded-3xl p-12">
-                <p class="text-2xl text-slate-400 mb-4">Updated</p>
-                <p id="kiosk-time" class="text-3xl font-mono text-slate-300">--:--</p>
+                <p class="text-2xl text-adaptive-secondary mb-4">Updated</p>
+                <p id="kiosk-time" class="text-3xl font-mono text-adaptive">--:--</p>
             </div>
         </div>
     </main>
@@ -204,22 +597,84 @@
         const IS_KIOSK = {{ is_kiosk|yesno:"true,false" }};
         const REFRESH_INTERVAL = IS_KIOSK ? 30000 : 60000; // 30s kiosk, 60s staff
 
+        // Chart instances
         let hourlyChart = null;
         let dailyChart = null;
+        let trendChart = null;
+        let entryFlagsPie = null;
+        let exitFlagsPie = null;
+        let entryFlagsHist = null;
+        let exitFlagsHist = null;
 
-        // Chart.js defaults
-        Chart.defaults.color = '#94a3b8';
-        Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
-        Chart.defaults.font.family = 'Outfit, sans-serif';
+        // State management
+        const state = {
+            trend: {
+                view: 'month',
+                month: new Date().getMonth() + 1,
+                year: new Date().getFullYear(),
+                startDate: null,
+                endDate: null,
+            },
+            flags: {
+                range: '7d',
+                startDate: null,
+                endDate: null,
+            }
+        };
 
+        // Flag color schemes
+        const ENTRY_FLAG_COLORS = {
+            'NORMAL_ENTRY': { bg: 'rgba(45, 212, 191, 0.8)', border: '#2dd4bf' },      // teal
+            'FORCED_ENTRY': { bg: 'rgba(251, 191, 36, 0.8)', border: '#fbbf24' },      // amber
+            'DUPLICATE_ENTRY': { bg: 'rgba(251, 113, 133, 0.8)', border: '#fb7185' },  // rose
+        };
+
+        const EXIT_FLAG_COLORS = {
+            'NORMAL_EXIT': { bg: 'rgba(167, 139, 250, 0.8)', border: '#a78bfa' },      // violet
+            'EMERGENCY_EXIT': { bg: 'rgba(248, 113, 113, 0.8)', border: '#f87171' },   // red
+            'ORPHAN_EXIT': { bg: 'rgba(96, 165, 250, 0.8)', border: '#60a5fa' },       // blue
+            'AUTO_EXIT': { bg: 'rgba(251, 146, 60, 0.8)', border: '#fb923c' },         // orange
+            'DUPLICATE_EXIT': { bg: 'rgba(148, 163, 184, 0.8)', border: '#94a3b8' },   // gray
+        };
+
+        // Chart.js defaults - theme aware
+        function getChartColors() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            return {
+                text: isLight ? '#475569' : '#94a3b8',
+                border: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.05)',
+                grid: isLight ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.03)'
+            };
+        }
+        
+        function applyChartDefaults() {
+            const colors = getChartColors();
+            Chart.defaults.color = colors.text;
+            Chart.defaults.borderColor = colors.border;
+            Chart.defaults.font.family = 'Outfit, sans-serif';
+        }
+        applyChartDefaults();
+
+        // ============ Formatting Helpers ============
         function formatTime(dateStr) {
             const d = new Date(dateStr);
             return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
         }
 
         function formatDate(dateStr) {
-            const d = new Date(dateStr);
+            const d = new Date(dateStr + 'T00:00:00');
             return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        }
+
+        function formatDateShort(dateStr) {
+            const d = new Date(dateStr + 'T00:00:00');
+            return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function formatMonth(monthStr) {
+            const [year, month] = monthStr.split('-');
+            const d = new Date(parseInt(year), parseInt(month) - 1, 1);
+            return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
         }
 
         function formatHour(hourStr) {
@@ -227,23 +682,50 @@
             return d.toLocaleTimeString('en-US', { hour: '2-digit', hour12: true });
         }
 
-        async function fetchSummary() {
+        function formatRangeLabel(start, end) {
+            const startDate = new Date(start + 'T00:00:00');
+            const endDate = new Date(end + 'T00:00:00');
+            const opts = { month: 'short', day: 'numeric', year: 'numeric' };
+            return `${startDate.toLocaleDateString('en-US', opts)} — ${endDate.toLocaleDateString('en-US', opts)}`;
+        }
+
+        // ============ API Helpers ============
+        function buildApiUrl(params) {
             let url = API_URL;
+            const queryParams = new URLSearchParams();
+            
             if (KIOSK_TOKEN) {
-                url += `?token=${encodeURIComponent(KIOSK_TOKEN)}`;
+                queryParams.set('token', KIOSK_TOKEN);
             }
             
-            try {
-                const response = await fetch(url, {
-                    credentials: 'include',
-                    headers: KIOSK_TOKEN ? { 'X-Kiosk-Token': KIOSK_TOKEN } : {}
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
+            for (const [key, value] of Object.entries(params)) {
+                if (value !== null && value !== undefined) {
+                    queryParams.set(key, value);
                 }
-                
-                const data = await response.json();
+            }
+            
+            const queryString = queryParams.toString();
+            return queryString ? `${url}?${queryString}` : url;
+        }
+
+        async function fetchApi(params = {}) {
+            const url = buildApiUrl(params);
+            const response = await fetch(url, {
+                credentials: 'include',
+                headers: KIOSK_TOKEN ? { 'X-Kiosk-Token': KIOSK_TOKEN } : {}
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            
+            return response.json();
+        }
+
+        // ============ Default Dashboard Fetch ============
+        async function fetchSummary() {
+            try {
+                const data = await fetchApi();
                 updateDashboard(data);
                 document.getElementById('error-toast').classList.add('hidden');
             } catch (error) {
@@ -259,7 +741,6 @@
             document.getElementById('today-exits').textContent = data.today.exits;
             
             // Update timestamp
-            const now = new Date(data.timestamp);
             document.getElementById('last-update').textContent = `Updated ${formatTime(data.timestamp)}`;
             
             const kioskTime = document.getElementById('kiosk-time');
@@ -274,6 +755,7 @@
             }
         }
 
+        // ============ Hourly & Daily Charts (unchanged) ============
         function updateHourlyChart(hourlyData) {
             const ctx = document.getElementById('hourly-chart').getContext('2d');
             
@@ -318,7 +800,7 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                grid: { color: 'rgba(255,255,255,0.03)' }
+                                grid: { color: getChartColors().grid }
                             },
                             x: {
                                 grid: { display: false }
@@ -381,7 +863,7 @@
                         scales: {
                             y: {
                                 beginAtZero: true,
-                                grid: { color: 'rgba(255,255,255,0.03)' }
+                                grid: { color: getChartColors().grid }
                             },
                             x: {
                                 grid: { display: false }
@@ -392,7 +874,566 @@
             }
         }
 
-        // Initial fetch
+        // ============ Extended Trend Chart ============
+        function showTrendLoading(show) {
+            const loader = document.getElementById('trend-chart-loading');
+            if (show) {
+                loader.classList.remove('hidden');
+            } else {
+                loader.classList.add('hidden');
+            }
+        }
+
+        async function fetchTrendData() {
+            showTrendLoading(true);
+            
+            try {
+                let params = {};
+                
+                if (state.trend.view === 'month') {
+                    params = {
+                        view: 'month',
+                        month: state.trend.month,
+                        year: state.trend.year,
+                    };
+                } else if (state.trend.view === 'year') {
+                    params = {
+                        view: 'year',
+                        year: state.trend.year,
+                    };
+                } else if (state.trend.view === 'range') {
+                    params = {
+                        view: 'range',
+                        start_date: state.trend.startDate,
+                        end_date: state.trend.endDate,
+                    };
+                }
+                
+                const data = await fetchApi(params);
+                updateTrendChart(data);
+            } catch (error) {
+                console.error('Failed to fetch trend data:', error);
+            } finally {
+                showTrendLoading(false);
+            }
+        }
+
+        function updateTrendChart(data) {
+            const ctx = document.getElementById('trend-chart').getContext('2d');
+            const rangeLabel = document.getElementById('trend-range-label');
+            
+            let chartData = [];
+            let labels = [];
+            let rangeText = '';
+            
+            if (data.view === 'month' && data.monthly) {
+                chartData = data.monthly.data;
+                labels = chartData.map(d => formatDateShort(d.date));
+                rangeText = formatRangeLabel(data.monthly.range.start, data.monthly.range.end);
+            } else if (data.view === 'year' && data.yearly) {
+                chartData = data.yearly.data;
+                labels = chartData.map(d => formatMonth(d.month));
+                rangeText = formatRangeLabel(data.yearly.range.start, data.yearly.range.end);
+            } else if (data.view === 'range' && data.range_data) {
+                chartData = data.range_data.data;
+                if (data.range_data.granularity === 'month') {
+                    labels = chartData.map(d => formatMonth(d.month));
+                } else {
+                    labels = chartData.map(d => formatDateShort(d.date));
+                }
+                rangeText = formatRangeLabel(data.range_data.range.start, data.range_data.range.end);
+            }
+            
+            rangeLabel.textContent = rangeText;
+            
+            const entries = chartData.map(d => d.entries);
+            const exits = chartData.map(d => d.exits);
+
+            if (trendChart) {
+                trendChart.data.labels = labels;
+                trendChart.data.datasets[0].data = entries;
+                trendChart.data.datasets[1].data = exits;
+                trendChart.update('none');
+            } else {
+                trendChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Entries',
+                                data: entries,
+                                borderColor: '#fbbf24',
+                                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                            },
+                            {
+                                label: 'Exits',
+                                data: exits,
+                                borderColor: '#fb7185',
+                                backgroundColor: 'rgba(251, 113, 133, 0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { usePointStyle: true, padding: 20 }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: getChartColors().grid }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============ Flag Analytics Charts ============
+        function showFlagsLoading(show) {
+            ['entry-pie-loading', 'exit-pie-loading', 'entry-hist-loading', 'exit-hist-loading'].forEach(id => {
+                const el = document.getElementById(id);
+                if (show) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+
+        async function fetchFlagsData() {
+            showFlagsLoading(true);
+            
+            try {
+                let params = { view: 'flags' };
+                
+                if (state.flags.range === 'custom' && state.flags.startDate && state.flags.endDate) {
+                    params.start_date = state.flags.startDate;
+                    params.end_date = state.flags.endDate;
+                } else {
+                    params.flag_range = state.flags.range;
+                }
+                
+                const data = await fetchApi(params);
+                updateFlagsCharts(data);
+            } catch (error) {
+                console.error('Failed to fetch flags data:', error);
+            } finally {
+                showFlagsLoading(false);
+            }
+        }
+
+        function updateFlagsCharts(data) {
+            if (!data.flags) return;
+            
+            const flags = data.flags;
+            const rangeLabel = document.getElementById('flags-range-label');
+            rangeLabel.textContent = formatRangeLabel(flags.range.start, flags.range.end);
+            
+            // Update pie charts
+            updateEntryFlagsPie(flags.entry_flags);
+            updateExitFlagsPie(flags.exit_flags);
+            
+            // Update histograms
+            updateEntryFlagsHist(flags.daily_breakdown);
+            updateExitFlagsHist(flags.daily_breakdown);
+        }
+
+        function updateEntryFlagsPie(entryFlags) {
+            const ctx = document.getElementById('entry-flags-pie').getContext('2d');
+            
+            const labels = Object.keys(entryFlags).map(k => k.replace('_', ' '));
+            const data = Object.values(entryFlags);
+            const colors = Object.keys(entryFlags).map(k => ENTRY_FLAG_COLORS[k]?.bg || 'rgba(148, 163, 184, 0.8)');
+            const borderColors = Object.keys(entryFlags).map(k => ENTRY_FLAG_COLORS[k]?.border || '#94a3b8');
+
+            if (entryFlagsPie) {
+                entryFlagsPie.data.labels = labels;
+                entryFlagsPie.data.datasets[0].data = data;
+                entryFlagsPie.update('none');
+            } else {
+                entryFlagsPie = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: borderColors,
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { 
+                                    usePointStyle: true, 
+                                    padding: 12,
+                                    font: { size: 11 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.raw / total) * 100).toFixed(1);
+                                        return `${context.label}: ${context.raw} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '60%',
+                    }
+                });
+            }
+        }
+
+        function updateExitFlagsPie(exitFlags) {
+            const ctx = document.getElementById('exit-flags-pie').getContext('2d');
+            
+            const labels = Object.keys(exitFlags).map(k => k.replace('_', ' '));
+            const data = Object.values(exitFlags);
+            const colors = Object.keys(exitFlags).map(k => EXIT_FLAG_COLORS[k]?.bg || 'rgba(148, 163, 184, 0.8)');
+            const borderColors = Object.keys(exitFlags).map(k => EXIT_FLAG_COLORS[k]?.border || '#94a3b8');
+
+            if (exitFlagsPie) {
+                exitFlagsPie.data.labels = labels;
+                exitFlagsPie.data.datasets[0].data = data;
+                exitFlagsPie.update('none');
+            } else {
+                exitFlagsPie = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: colors,
+                            borderColor: borderColors,
+                            borderWidth: 2,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { 
+                                    usePointStyle: true, 
+                                    padding: 12,
+                                    font: { size: 11 }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((context.raw / total) * 100).toFixed(1);
+                                        return `${context.label}: ${context.raw} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        },
+                        cutout: '60%',
+                    }
+                });
+            }
+        }
+
+        function updateEntryFlagsHist(dailyBreakdown) {
+            const ctx = document.getElementById('entry-flags-hist').getContext('2d');
+            
+            const labels = dailyBreakdown.map(d => formatDateShort(d.date));
+            const flagTypes = ['NORMAL_ENTRY', 'FORCED_ENTRY', 'DUPLICATE_ENTRY'];
+            
+            const datasets = flagTypes.map(flag => ({
+                label: flag.replace('_', ' '),
+                data: dailyBreakdown.map(d => d.entry[flag] || 0),
+                backgroundColor: ENTRY_FLAG_COLORS[flag]?.bg || 'rgba(148, 163, 184, 0.8)',
+                borderColor: ENTRY_FLAG_COLORS[flag]?.border || '#94a3b8',
+                borderWidth: 1,
+                borderRadius: 2,
+            }));
+
+            if (entryFlagsHist) {
+                entryFlagsHist.data.labels = labels;
+                entryFlagsHist.data.datasets = datasets;
+                entryFlagsHist.update('none');
+            } else {
+                entryFlagsHist = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets,
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { 
+                                    usePointStyle: true, 
+                                    padding: 12,
+                                    font: { size: 10 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false },
+                                ticks: { font: { size: 9 } }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                grid: { color: getChartColors().grid }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateExitFlagsHist(dailyBreakdown) {
+            const ctx = document.getElementById('exit-flags-hist').getContext('2d');
+            
+            const labels = dailyBreakdown.map(d => formatDateShort(d.date));
+            const flagTypes = ['NORMAL_EXIT', 'EMERGENCY_EXIT', 'ORPHAN_EXIT', 'AUTO_EXIT', 'DUPLICATE_EXIT'];
+            
+            const datasets = flagTypes.map(flag => ({
+                label: flag.replace('_', ' '),
+                data: dailyBreakdown.map(d => d.exit[flag] || 0),
+                backgroundColor: EXIT_FLAG_COLORS[flag]?.bg || 'rgba(148, 163, 184, 0.8)',
+                borderColor: EXIT_FLAG_COLORS[flag]?.border || '#94a3b8',
+                borderWidth: 1,
+                borderRadius: 2,
+            }));
+
+            if (exitFlagsHist) {
+                exitFlagsHist.data.labels = labels;
+                exitFlagsHist.data.datasets = datasets;
+                exitFlagsHist.update('none');
+            } else {
+                exitFlagsHist = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: datasets,
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index',
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { 
+                                    usePointStyle: true, 
+                                    padding: 12,
+                                    font: { size: 10 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false },
+                                ticks: { font: { size: 9 } }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                grid: { color: getChartColors().grid }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ============ UI Event Handlers ============
+        function initTrendControls() {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth() + 1;
+            
+            // Populate year selects
+            const yearSelects = ['trend-year-select', 'trend-year-only-select'];
+            yearSelects.forEach(id => {
+                const select = document.getElementById(id);
+                for (let year = currentYear; year >= currentYear - 10; year--) {
+                    const opt = document.createElement('option');
+                    opt.value = year;
+                    opt.textContent = year;
+                    select.appendChild(opt);
+                }
+            });
+            
+            // Set current month
+            document.getElementById('trend-month-select').value = currentMonth;
+            
+            // Set default date range for custom
+            const thirtyDaysAgo = new Date(now);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            document.getElementById('trend-start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            document.getElementById('trend-end-date').value = now.toISOString().split('T')[0];
+            
+            // View toggle buttons
+            document.querySelectorAll('[data-view]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const view = this.dataset.view;
+                    
+                    // Update button states
+                    document.querySelectorAll('[data-view]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show/hide relevant controls
+                    document.getElementById('trend-month-controls').classList.toggle('hidden', view !== 'month');
+                    document.getElementById('trend-year-controls').classList.toggle('hidden', view !== 'year');
+                    document.getElementById('trend-range-controls').classList.toggle('hidden', view !== 'range');
+                    
+                    state.trend.view = view;
+                    
+                    if (view !== 'range') {
+                        fetchTrendData();
+                    }
+                });
+            });
+            
+            // Month/year change handlers
+            document.getElementById('trend-month-select').addEventListener('change', function() {
+                state.trend.month = parseInt(this.value);
+                fetchTrendData();
+            });
+            
+            document.getElementById('trend-year-select').addEventListener('change', function() {
+                state.trend.year = parseInt(this.value);
+                fetchTrendData();
+            });
+            
+            document.getElementById('trend-year-only-select').addEventListener('change', function() {
+                state.trend.year = parseInt(this.value);
+                fetchTrendData();
+            });
+            
+            // Custom range apply
+            document.getElementById('trend-apply-range').addEventListener('click', function() {
+                state.trend.startDate = document.getElementById('trend-start-date').value;
+                state.trend.endDate = document.getElementById('trend-end-date').value;
+                
+                if (state.trend.startDate && state.trend.endDate) {
+                    fetchTrendData();
+                }
+            });
+        }
+
+        function initFlagsControls() {
+            const now = new Date();
+            
+            // Set default date range for custom
+            const thirtyDaysAgo = new Date(now);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            document.getElementById('flags-start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            document.getElementById('flags-end-date').value = now.toISOString().split('T')[0];
+            
+            // Preset buttons
+            document.querySelectorAll('[data-range]').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const range = this.dataset.range;
+                    
+                    // Update button states
+                    document.querySelectorAll('[data-range]').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show/hide custom range controls
+                    document.getElementById('flags-range-controls').classList.toggle('hidden', range !== 'custom');
+                    
+                    state.flags.range = range;
+                    
+                    if (range !== 'custom') {
+                        fetchFlagsData();
+                    }
+                });
+            });
+            
+            // Custom range apply
+            document.getElementById('flags-apply-range').addEventListener('click', function() {
+                state.flags.startDate = document.getElementById('flags-start-date').value;
+                state.flags.endDate = document.getElementById('flags-end-date').value;
+                
+                if (state.flags.startDate && state.flags.endDate) {
+                    fetchFlagsData();
+                }
+            });
+        }
+
+        // ============ Theme Toggle ============
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('dashboard-theme', next);
+            
+            // Update chart colors
+            applyChartDefaults();
+            const colors = getChartColors();
+            
+            const allCharts = [hourlyChart, dailyChart, trendChart, entryFlagsHist, exitFlagsHist];
+            allCharts.forEach(chart => {
+                if (chart && chart.options.scales?.y) {
+                    chart.options.scales.y.grid.color = colors.grid;
+                    chart.update('none');
+                }
+            });
+        }
+
+        // ============ Initialization ============
+        document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+
+        // Initialize when not in kiosk mode
+        if (!IS_KIOSK) {
+            initTrendControls();
+            initFlagsControls();
+            
+            // Initial data fetch for new charts
+            fetchTrendData();
+            fetchFlagsData();
+        }
+
+        // Initial fetch for default dashboard
         fetchSummary();
 
         // Auto-refresh

@@ -1,6 +1,6 @@
 import json
 import sys
-import uuid
+from datetime import datetime
 from pathlib import Path
 
 import jwt
@@ -9,6 +9,22 @@ from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
 from shared.apps.entries.models import EntryLog, ExitLog
 from scanner.models import OutboxEvent
+
+
+def parse_iso_datetime(dt_str: str) -> datetime:
+    """Parse ISO format datetime string to timezone-aware datetime."""
+    if not dt_str:
+        return None
+    # Handle Z suffix
+    dt_str = dt_str.replace("Z", "+00:00")
+    try:
+        dt = datetime.fromisoformat(dt_str)
+        # Make timezone-aware if naive
+        if dt.tzinfo is None:
+            dt = timezone.make_aware(dt)
+        return dt
+    except ValueError as e:
+        raise ValueError(f"Error: {e}\nInvalid datetime format: {dt_str}. Use ISO format (e.g., 2026-01-10T14:30:00Z)")
 
 
 class Command(BaseCommand):
@@ -27,6 +43,22 @@ class Command(BaseCommand):
             choices=["entry", "exit"],
             default="entry",
             help="Scan mode: 'entry' (default) or 'exit'.",
+        )
+        # Test mode arguments
+        parser.add_argument(
+            "--test-mode",
+            action="store_true",
+            help="Enable test mode: skip expiry validation, allow timestamp overrides, mark source as TEST.",
+        )
+        parser.add_argument(
+            "--override-scanned-at",
+            default=None,
+            help="Override scanned_at timestamp (ISO format). Requires --test-mode.",
+        )
+        parser.add_argument(
+            "--override-created-at",
+            default=None,
+            help="Override created_at timestamp (ISO format). Can also be read from token's createdAt claim. Requires --test-mode.",
         )
 
     def handle(self, *args, **options):
@@ -53,21 +85,28 @@ class Command(BaseCommand):
 
         public_key = pub_path.read_text()
         mode = options.get("mode", "entry")
+        test_mode = options.get("test_mode", False)
+
+        # Parse timestamp overrides (require test mode)
+        override_scanned_at = None
+        override_created_at = None
+        if options.get("override_scanned_at") or options.get("override_created_at"):
+            if not test_mode:
+                raise CommandError("--override-scanned-at and --override-created-at require --test-mode")
+            try:
+                if options.get("override_scanned_at"):
+                    override_scanned_at = parse_iso_datetime(options["override_scanned_at"])
+                if options.get("override_created_at"):
+                    override_created_at = parse_iso_datetime(options["override_created_at"])
+            except ValueError as e:
+                raise CommandError(str(e))
 
         # Decode JWT (with expired token handling)
         payload = None
         is_expired = False
-        try:
-            payload = jwt.decode(
-                token,
-                public_key,
-                algorithms=["RS256"],
-                audience="library-gate",
-                issuer="library-backend",
-            )
-        except jwt.ExpiredSignatureError:
-            # Token is cryptographically valid but expired; best-effort update of local gate DB.
-            is_expired = True
+        
+        if test_mode:
+            # In test mode, skip expiry validation entirely
             try:
                 payload = jwt.decode(
                     token,
@@ -77,19 +116,58 @@ class Command(BaseCommand):
                     issuer="library-backend",
                     options={"verify_exp": False},
                 )
-            except Exception:
-                raise CommandError("DENY: token expired and cannot be decoded")
-        except jwt.InvalidAudienceError:
-            raise CommandError("DENY: invalid audience (aud)")
-        except jwt.InvalidIssuerError:
-            raise CommandError("DENY: invalid issuer (iss)")
-        except jwt.InvalidTokenError as e:
-            raise CommandError(f"DENY: invalid token ({e})")
+            except jwt.InvalidAudienceError:
+                raise CommandError("DENY: invalid audience (aud)")
+            except jwt.InvalidIssuerError:
+                raise CommandError("DENY: invalid issuer (iss)")
+            except jwt.InvalidTokenError as e:
+                raise CommandError(f"DENY: invalid token ({e})")
+            
+            # Check for createdAt in token payload if not overridden via CLI
+            if not override_created_at and payload.get("createdAt"):
+                try:
+                    override_created_at = parse_iso_datetime(payload["createdAt"])
+                except ValueError:
+                    pass  # Ignore invalid createdAt in token
+        else:
+            try:
+                payload = jwt.decode(
+                    token,
+                    public_key,
+                    algorithms=["RS256"],
+                    audience="library-gate",
+                    issuer="library-backend",
+                )
+            except jwt.ExpiredSignatureError:
+                # Token is cryptographically valid but expired; best-effort update of local gate DB.
+                is_expired = True
+                try:
+                    payload = jwt.decode(
+                        token,
+                        public_key,
+                        algorithms=["RS256"],
+                        audience="library-gate",
+                        issuer="library-backend",
+                        options={"verify_exp": False},
+                    )
+                except Exception:
+                    raise CommandError("DENY: token expired and cannot be decoded")
+            except jwt.InvalidAudienceError:
+                raise CommandError("DENY: invalid audience (aud)")
+            except jwt.InvalidIssuerError:
+                raise CommandError("DENY: invalid issuer (iss)")
+            except jwt.InvalidTokenError as e:
+                raise CommandError(f"DENY: invalid token ({e})")
+
+        # Store test mode context in options for handlers
+        options["_test_mode"] = test_mode
+        options["_override_scanned_at"] = override_scanned_at
+        options["_override_created_at"] = override_created_at
 
         if mode == "exit":
             self._handle_exit(payload, is_expired, options)
         else:
-            self._handle_entry(payload, False, options)
+            self._handle_entry(payload, is_expired if not test_mode else False, options)
 
     def _extract_device_context(self, payload, is_expired=False):
         """
@@ -138,11 +216,21 @@ class Command(BaseCommand):
         os_name = device_ctx["os"]
         device_id = device_ctx["device_id"]
         device_meta = device_ctx["device_meta"]
+        
+        # Test mode context
+        test_mode = options.get("_test_mode", False)
+        override_scanned_at = options.get("_override_scanned_at")
+        override_created_at = options.get("_override_created_at")
+        
+        # In test mode, override source to TEST
+        if test_mode:
+            source = "TEST"
+            device_meta["testMode"] = True
 
         if is_expired:
             # For entry, expired tokens mark the entry as EXPIRED and deny
             if entry_log_id:
-                ts = timezone.now()
+                ts = override_scanned_at or timezone.now()
                 updated = EntryLog.objects.filter(id=entry_log_id).update(status="EXPIRED", scanned_at=ts)
                 if updated:
                     OutboxEvent.objects.create(
@@ -153,6 +241,7 @@ class Command(BaseCommand):
                             "entryId": str(entry_log_id),
                             "roll": payload.get("roll"),
                             "scannedAt": ts.isoformat(),
+                            "createdAt": (override_created_at or ts).isoformat(),
                             "status": "EXPIRED",
                             "entryFlag": payload.get("entryFlag") or payload.get("entry_flag") or None,
                             "laptop": payload.get("laptop"),
@@ -181,7 +270,7 @@ class Command(BaseCommand):
             
             # If entry doesn't exist locally yet, create it on scan.
             if not existing_entry:
-                ts = timezone.now()
+                ts = override_scanned_at or timezone.now()
                 open_entries = EntryLog.objects.filter(roll_id=roll, status="ENTERED")
                 
                 if open_entries.exists():
@@ -203,11 +292,16 @@ class Command(BaseCommand):
                                 "type": "ENTRY",
                                 "entryId": str(open_entry.id),
                                 "roll": roll,
-                                "scannedAt": None,
+                                "scannedAt": ts.isoformat(),
+                                "createdAt": open_entry.created_at.isoformat() if open_entry.created_at else ts.isoformat(),
                                 "status": "EXPIRED",
                                 "entryFlag": open_entry.entry_flag,
                                 "laptop": open_entry.laptop,
                                 "extra": open_entry.extra or [],
+                                "deviceMeta": open_entry.device_meta or {},
+                                "deviceId": open_entry.device_id,
+                                "source": open_entry.source,
+                                "os": open_entry.os,
                             },
                         )
                 else:
@@ -227,6 +321,11 @@ class Command(BaseCommand):
                     device_id=device_id,
                     device_meta=device_meta,
                 )
+                
+                # Override created_at if specified (bypass auto_now_add)
+                if override_created_at:
+                    EntryLog.objects.filter(id=new_entry.id).update(created_at=override_created_at)
+                
                 OutboxEvent.objects.create(
                     event_type="ENTRY",
                     payload={
@@ -235,6 +334,7 @@ class Command(BaseCommand):
                         "entryId": str(new_entry.id),
                         "roll": roll,
                         "scannedAt": ts.isoformat(),
+                        "createdAt": (override_created_at or ts).isoformat(),
                         "status": new_entry.status,
                         "entryFlag": new_entry.entry_flag,
                         "laptop": new_entry.laptop,
@@ -276,7 +376,12 @@ class Command(BaseCommand):
         - DUPLICATE_EXIT: exit already recorded for this entry
         - AUTO_EXIT: (created by midnight job, not by scan)
         """
-        ts = timezone.now()
+        # Test mode context
+        test_mode = options.get("_test_mode", False)
+        override_scanned_at = options.get("_override_scanned_at")
+        override_created_at = options.get("_override_created_at")
+        
+        ts = override_scanned_at or timezone.now()
         roll = payload.get("roll")
         entry_id_from_token = payload.get("entryId")
         token_type = payload.get("type")  # 'emergency' for emergency tokens, None/missing for entry tokens
@@ -287,6 +392,11 @@ class Command(BaseCommand):
         source = device_ctx["source"]
         os_name = device_ctx["os"]
         device_id = device_ctx["device_id"]
+        
+        # In test mode, override source to TEST
+        if test_mode:
+            source = "TEST"
+            device_meta["testMode"] = True
 
         # Determine entry reference
         entry_obj = None
@@ -316,7 +426,12 @@ class Command(BaseCommand):
                     device_id=device_id,
                     scanned_at=ts,
                 )
-                self._emit_exit_event(exit_log, roll)
+                
+                # Override created_at if specified
+                if override_created_at:
+                    ExitLog.objects.filter(id=exit_log.id).update(created_at=override_created_at)
+                
+                self._emit_exit_event(exit_log, roll, override_created_at=override_created_at)
                 self._print_allow(roll, "EXITING", laptop, extra, str(exit_log.id), payload.get("exp"), "DUPLICATE_EXIT", options)
                 return
 
@@ -344,21 +459,47 @@ class Command(BaseCommand):
             device_id=device_id,
             scanned_at=ts,
         )
+        
+        # Override created_at if specified (bypass auto_now_add)
+        if override_created_at:
+            ExitLog.objects.filter(id=exit_log.id).update(created_at=override_created_at)
 
         # Update EntryLog status to EXITED (if we have a valid entry)
         if entry_obj:
             # ## [FIX]: Removed 'scanned_at=ts' from this update.
             # 'scanned_at' on EntryLog refers to entry time. Overwriting it with exit time destroys data.
             EntryLog.objects.filter(id=entry_obj.id).update(status="EXITED")
+            
+            # Emit ENTRY event to sync status change to backend
+            OutboxEvent.objects.create(
+                event_type="ENTRY",
+                payload={
+                    "eventId": None,
+                    "type": "ENTRY",
+                    "entryId": str(entry_obj.id),
+                    "roll": roll,
+                    "scannedAt": entry_obj.scanned_at.isoformat() if entry_obj.scanned_at else ts.isoformat(),
+                    "createdAt": entry_obj.created_at.isoformat() if entry_obj.created_at else ts.isoformat(),
+                    "status": "EXITED",
+                    "entryFlag": entry_obj.entry_flag,
+                    "laptop": entry_obj.laptop,
+                    "extra": entry_obj.extra or [],
+                    "deviceMeta": entry_obj.device_meta or {},
+                    "deviceId": entry_obj.device_id,
+                    "source": entry_obj.source,
+                    "os": entry_obj.os,
+                },
+            )
 
         # Emit EXIT outbox event
-        self._emit_exit_event(exit_log, roll)
+        self._emit_exit_event(exit_log, roll, override_created_at=override_created_at)
 
         self.stdout.write("  scanned successfully: EXITED")
         self._print_allow(roll, "EXITING", laptop, extra, str(exit_log.id), payload.get("exp"), exit_flag, options)
 
-    def _emit_exit_event(self, exit_log, roll):
+    def _emit_exit_event(self, exit_log, roll, override_created_at=None):
         """Emit an EXIT outbox event for syncing to backend."""
+        created_at = override_created_at or exit_log.created_at or exit_log.scanned_at
         OutboxEvent.objects.create(
             event_type="EXIT",
             payload={
@@ -368,6 +509,7 @@ class Command(BaseCommand):
                 "entryId": str(exit_log.entry_id_id) if exit_log.entry_id_id else None,
                 "roll": roll,
                 "scannedAt": exit_log.scanned_at.isoformat() if exit_log.scanned_at else None,
+                "createdAt": created_at.isoformat() if created_at else None,
                 "exitFlag": exit_log.exit_flag,
                 "laptop": exit_log.laptop,
                 "extra": exit_log.extra or [],

@@ -137,6 +137,7 @@ def gate_events(request):
                     entry_id = _parse_uuid(ev.get("entryId"))
                     roll = ev.get("roll")
                     scanned_at = _parse_dt(ev.get("scannedAt")) or timezone.now()
+                    created_at = _parse_dt(ev.get("createdAt"))
                     status_val = ev.get("status") or ("EXPIRED" if event_type == "ENTRY_EXPIRED_SEEN" else "ENTERED")
                     entry_flag = ev.get("entryFlag") or "NORMAL_ENTRY"
                     laptop = ev.get("laptop")
@@ -161,27 +162,32 @@ def gate_events(request):
                         # Older replay; don't overwrite newer data.
                         pass
                     else:
-                        EntryLog.objects.update_or_create(
+                        defaults = {
+                            "roll": user,
+                            "scanned_at": scanned_at,
+                            "status": status_val,
+                            "entry_flag": entry_flag,
+                            "laptop": laptop,
+                            "extra": extra,
+                            "source": source,
+                            "os": os_name,
+                            "device_id": device_id,
+                            "device_meta": device_meta,
+                        }
+                        obj, created = EntryLog.objects.update_or_create(
                             id=entry_id,
-                            defaults={
-                                "roll": user,
-                                "scanned_at": scanned_at,
-                                "status": status_val,
-                                "entry_flag": entry_flag,
-                                "laptop": laptop,
-                                "extra": extra,
-                                "source": source,
-                                "os": os_name,
-                                "device_id": device_id,
-                                "device_meta": device_meta,
-                            },
+                            defaults=defaults,
                         )
+                        # Apply created_at after save (bypasses auto_now_add)
+                        if created_at:
+                            EntryLog.objects.filter(id=entry_id).update(created_at=created_at)
 
                 elif event_type == "EXIT":
                     exit_id = _parse_uuid(ev.get("exitId"))
                     entry_id = ev.get("entryId")
                     roll = ev.get("roll")
                     scanned_at = _parse_dt(ev.get("scannedAt")) or timezone.now()
+                    created_at = _parse_dt(ev.get("createdAt"))
                     exit_flag = ev.get("exitFlag") or "NORMAL_EXIT"
                     laptop = ev.get("laptop")
                     extra = ev.get("extra") or []
@@ -212,21 +218,25 @@ def gate_events(request):
                     if existing and not _should_apply_ts(existing.scanned_at, scanned_at):
                         pass
                     else:
-                        ExitLog.objects.update_or_create(
+                        defaults = {
+                            "roll": user,
+                            "entry_id": entry_obj,
+                            "scanned_at": scanned_at,
+                            "exit_flag": exit_flag,
+                            "laptop": laptop,
+                            "extra": extra,
+                            "device_meta": device_meta,
+                            "device_id": device_id,
+                            "source": source,
+                            "os": os_name,
+                        }
+                        obj, created = ExitLog.objects.update_or_create(
                             id=exit_id,
-                            defaults={
-                                "roll": user,
-                                "entry_id": entry_obj,
-                                "scanned_at": scanned_at,
-                                "exit_flag": exit_flag,
-                                "laptop": laptop,
-                                "extra": extra,
-                                "device_meta": device_meta,
-                                "device_id": device_id,
-                                "source": source,
-                                "os": os_name,
-                            },
+                            defaults=defaults,
                         )
+                        # Apply created_at after save (bypasses auto_now_add)
+                        if created_at:
+                            ExitLog.objects.filter(id=exit_id).update(created_at=created_at)
 
                 else:
                     raise ValueError(f"Unknown event type: {event_type}")
