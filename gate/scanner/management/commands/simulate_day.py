@@ -326,7 +326,7 @@ class Command(BaseCommand):
         
         if dry_run:
             if verbose:
-                self.stdout.write(f"  [DRY] Entry: {roll} @ {created_at}")
+                self.stdout.write(self.style.SUCCESS(f"  [DRY] Entry: {roll} @ {created_at}"))
             stats["entries_processed"] += 1
             return entry_id, created_at
         
@@ -384,7 +384,7 @@ class Command(BaseCommand):
         
         if dry_run:
             if verbose:
-                self.stdout.write(f"  [DRY] Exit:  {roll} @ {exit_time}")
+                self.stdout.write(self.style.WARNING(f"  [DRY] Exit:  {roll} @ {exit_time}"))
             stats["exits_processed"] += 1
             return
         

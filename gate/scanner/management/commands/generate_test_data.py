@@ -226,13 +226,18 @@ class Command(BaseCommand):
                     stats=stats,
                 )
         else:
-            # Dry run - just compute what would be generated
+            # Dry run - simulate with timestamps output
             self._dry_run_preview(
                 rolls=rolls,
+                start_date=start_date,
+                end_date=end_date,
+                hour_start=hour_start,
+                hour_end=hour_end,
                 entries_per_user=entries_per_user,
                 exit_ratio=exit_ratio,
                 orphan_rate=orphan_rate,
                 duplicate_rate=duplicate_rate,
+                late_scan_rate=late_scan_rate,
                 stats=stats,
             )
         
@@ -378,6 +383,7 @@ class Command(BaseCommand):
                 "type": "ENTRY",
                 "entryId": str(entry.id),
                 "roll": user.roll,
+                "createdAt": created_at.isoformat(),
                 "scannedAt": scanned_at.isoformat(),
                 "status": status,
                 "entryFlag": entry_flag,
@@ -480,6 +486,7 @@ class Command(BaseCommand):
                 "exitId": str(exit_log.id),
                 "entryId": str(entry.id),
                 "roll": user.roll,
+                "createdAt": scanned_at.isoformat(),
                 "scannedAt": scanned_at.isoformat(),
                 "exitFlag": exit_flag,
                 "laptop": laptop,
@@ -532,6 +539,7 @@ class Command(BaseCommand):
                 "exitId": str(exit_log.id),
                 "entryId": str(entry.id),
                 "roll": user.roll,
+                "createdAt": scanned_at.isoformat(),
                 "scannedAt": scanned_at.isoformat(),
                 "exitFlag": "DUPLICATE_EXIT",
                 "laptop": exit_log.laptop,
@@ -582,6 +590,7 @@ class Command(BaseCommand):
                 "exitId": str(exit_log.id),
                 "entryId": None,
                 "roll": user.roll,
+                "createdAt": scanned_at.isoformat(),
                 "scannedAt": scanned_at.isoformat(),
                 "exitFlag": "ORPHAN_EXIT",
                 "laptop": laptop,
@@ -598,40 +607,153 @@ class Command(BaseCommand):
     def _dry_run_preview(
         self,
         rolls: list[str],
+        start_date: datetime,
+        end_date: datetime,
+        hour_start: int,
+        hour_end: int,
         entries_per_user: int,
         exit_ratio: float,
         orphan_rate: float,
         duplicate_rate: float,
+        late_scan_rate: float,
         stats: dict,
     ):
-        """Preview what would be generated without inserting."""
+        """Preview what would be generated with timestamps, without inserting."""
+        events = []  # Collect all events for sorted output
+        
         for roll in rolls:
             variance = random.uniform(0.5, 1.5)
             num_entries = max(1, int(entries_per_user * variance))
             
-            stats["entries_created"] += num_entries
-            
             for _ in range(num_entries):
-                # Simulate exit creation
-                if random.random() < exit_ratio:
-                    stats["exits_created"] += 1
-                    if random.random() < duplicate_rate:
-                        stats["duplicate_exits"] += 1
+                # Generate entry timestamps
+                created_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end, bias="entry")
                 
-                # Simulate duplicate entry
+                if random.random() < late_scan_rate:
+                    scan_offset = timedelta(hours=random.randint(25, 48))
+                    is_late = True
+                    stats["late_scans"] += 1
+                else:
+                    scan_offset = timedelta(minutes=random.randint(0, 360))
+                    is_late = False
+                
+                entry_scanned_at = created_at + scan_offset
+                
+                # Entry flag
+                if random.random() < 0.05:
+                    entry_flag = "FORCED_ENTRY"
+                    stats["forced_entries"] += 1
+                else:
+                    entry_flag = "NORMAL_ENTRY"
+                
+                events.append({
+                    "type": "ENTRY",
+                    "roll": roll,
+                    "created_at": created_at,
+                    "scanned_at": entry_scanned_at,
+                    "flag": entry_flag,
+                    "late": is_late,
+                })
+                stats["entries_created"] += 1
+                stats["outbox_events"] += 1
+                
+                # Duplicate entry
                 if random.random() < duplicate_rate:
+                    dup_scanned_at = entry_scanned_at + timedelta(seconds=30)
+                    events.append({
+                        "type": "ENTRY",
+                        "roll": roll,
+                        "created_at": created_at,
+                        "scanned_at": dup_scanned_at,
+                        "flag": "DUPLICATE_ENTRY",
+                        "late": False,
+                    })
                     stats["duplicate_entries"] += 1
+                    stats["outbox_events"] += 1
+                
+                # Exit
+                if random.random() < exit_ratio:
+                    exit_offset = timedelta(hours=random.triangular(1, 8, 5))
+                    exit_scanned_at = entry_scanned_at + exit_offset
+                    
+                    exit_flags = ["NORMAL_EXIT"] * 18 + ["EMERGENCY_EXIT"] * 1 + ["NORMAL_EXIT"] * 1
+                    exit_flag = random.choice(exit_flags)
+                    
+                    events.append({
+                        "type": "EXIT",
+                        "roll": roll,
+                        "scanned_at": exit_scanned_at,
+                        "flag": exit_flag,
+                        "linked_entry": entry_scanned_at,
+                    })
+                    stats["exits_created"] += 1
+                    stats["outbox_events"] += 1
+                    
+                    # Duplicate exit
+                    if random.random() < duplicate_rate:
+                        dup_exit_at = exit_scanned_at + timedelta(seconds=45)
+                        events.append({
+                            "type": "EXIT",
+                            "roll": roll,
+                            "scanned_at": dup_exit_at,
+                            "flag": "DUPLICATE_EXIT",
+                            "linked_entry": entry_scanned_at,
+                        })
+                        stats["duplicate_exits"] += 1
+                        stats["outbox_events"] += 1
             
-            # Simulate orphan exit
+            # Orphan exit
             if random.random() < orphan_rate:
+                orphan_scanned_at = random_datetime_in_range(start_date, end_date, hour_start, hour_end, bias="exit")
+                events.append({
+                    "type": "EXIT",
+                    "roll": roll,
+                    "scanned_at": orphan_scanned_at,
+                    "flag": "ORPHAN_EXIT",
+                    "linked_entry": None,
+                })
                 stats["orphan_exits"] += 1
                 stats["exits_created"] += 1
+                stats["outbox_events"] += 1
         
-        # Estimate outbox events
-        stats["outbox_events"] = (
-            stats["entries_created"]
-            + stats["exits_created"]
-            + stats["duplicate_entries"]
-            + stats["duplicate_exits"]
-        )
+        # Sort events by scanned_at
+        events.sort(key=lambda e: e["scanned_at"])
+        
+        # Print timeline
+        self.stdout.write("\n" + self.style.MIGRATE_HEADING("Timeline Preview:"))
+        self.stdout.write("-" * 80)
+        
+        current_date = None
+        for event in events:
+            event_date = event["scanned_at"].date()
+            if event_date != current_date:
+                current_date = event_date
+                self.stdout.write(f"\n{self.style.HTTP_INFO(str(event_date))}")
+            
+            ts = event["scanned_at"].strftime("%H:%M:%S")
+            flag = event["flag"]
+            roll = event["roll"]
+            
+            if event["type"] == "ENTRY":
+                if flag == "DUPLICATE_ENTRY":
+                    style = self.style.WARNING
+                elif flag == "FORCED_ENTRY":
+                    style = self.style.ERROR
+                elif event.get("late"):
+                    style = self.style.NOTICE
+                else:
+                    style = self.style.SUCCESS
+                self.stdout.write(f"  {ts}  {style('ENTRY')}  {roll:15}  {flag}")
+            else:
+                if flag == "ORPHAN_EXIT":
+                    style = self.style.ERROR
+                elif flag == "DUPLICATE_EXIT":
+                    style = self.style.WARNING
+                elif flag == "EMERGENCY_EXIT":
+                    style = self.style.NOTICE
+                else:
+                    style = self.style.HTTP_SUCCESS
+                self.stdout.write(f"  {ts}  {style('EXIT')}   {roll:15}  {flag}")
+        
+        self.stdout.write("\n" + "-" * 80)
 
