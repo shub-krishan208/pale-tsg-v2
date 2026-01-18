@@ -141,12 +141,18 @@ def gate_events(request):
                     entry_flag = ev.get("entryFlag") or "NORMAL_ENTRY"
                     laptop = ev.get("laptop")
                     extra = ev.get("extra") or []
+                    device_meta = ev.get("deviceMeta") or ev.get("deviceMetadata") or {}
+                    device_id = ev.get("deviceId") or None
+                    source = ev.get("source") or None
+                    os_name = ev.get("os") or None
 
                     if not entry_id or not roll:
                         raise ValueError("ENTRY requires entryId and roll")
 
                     if not isinstance(extra, list):
                         raise ValueError("ENTRY extra must be a list")
+                    if not isinstance(device_meta, dict):
+                        raise ValueError("ENTRY deviceMeta must be an object")
 
                     user, _ = User.objects.get_or_create(roll=roll)
 
@@ -164,6 +170,10 @@ def gate_events(request):
                                 "entry_flag": entry_flag,
                                 "laptop": laptop,
                                 "extra": extra,
+                                "source": source,
+                                "os": os_name,
+                                "device_id": device_id,
+                                "device_meta": device_meta,
                             },
                         )
 
@@ -175,7 +185,10 @@ def gate_events(request):
                     exit_flag = ev.get("exitFlag") or "NORMAL_EXIT"
                     laptop = ev.get("laptop")
                     extra = ev.get("extra") or []
-                    device_meta = ev.get("deviceMeta") or {}
+                    device_meta = ev.get("deviceMeta") or ev.get("deviceMetadata") or {}
+                    device_id = ev.get("deviceId") or None
+                    source = ev.get("source") or None
+                    os_name = ev.get("os") or None
 
                     if not exit_id or not roll:
                         raise ValueError("EXIT requires exitId and roll")
@@ -209,6 +222,9 @@ def gate_events(request):
                                 "laptop": laptop,
                                 "extra": extra,
                                 "device_meta": device_meta,
+                                "device_id": device_id,
+                                "source": source,
+                                "os": os_name,
                             },
                         )
 

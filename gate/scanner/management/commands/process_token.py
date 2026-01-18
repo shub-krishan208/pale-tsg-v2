@@ -91,9 +91,53 @@ class Command(BaseCommand):
         else:
             self._handle_entry(payload, False, options)
 
+    def _extract_device_context(self, payload, is_expired=False):
+        """
+        Extract device context from the JWT payload.
+
+        Supports both camelCase and snake_case keys and defensively copies the
+        metadata dictionary so callers can safely mutate it.
+        """
+        raw_meta = (
+            payload.get("deviceMetadata")
+            or payload.get("deviceMeta")
+            or payload.get("device_meta")
+            or {}
+        )
+        if not isinstance(raw_meta, dict):
+            raw_meta = {}
+        device_meta = dict(raw_meta)
+
+        source = payload.get("source") or device_meta.get("source")
+        os_name = payload.get("os") or device_meta.get("os")
+        device_id = (
+            payload.get("deviceId")
+            or device_meta.get("deviceId")
+            or device_meta.get("id")
+        )
+
+        if is_expired:
+            device_meta.setdefault("expired", True)
+
+        gate_device_id = getattr(settings, "GATE_DEVICE_ID", None)
+        if gate_device_id:
+            device_meta.setdefault("gateDeviceId", gate_device_id)
+
+        return {
+            "source": source,
+            "os": os_name,
+            "device_id": device_id,
+            "device_meta": device_meta,
+        }
+
     def _handle_entry(self, payload, is_expired, options):
         """Handle entry scan (original behavior)."""
         entry_log_id = payload.get("entryId")
+        device_ctx = self._extract_device_context(payload, is_expired=is_expired)
+        source = device_ctx["source"]
+        os_name = device_ctx["os"]
+        device_id = device_ctx["device_id"]
+        device_meta = device_ctx["device_meta"]
 
         if is_expired:
             # For entry, expired tokens mark the entry as EXPIRED and deny
@@ -113,6 +157,10 @@ class Command(BaseCommand):
                             "entryFlag": payload.get("entryFlag") or payload.get("entry_flag") or None,
                             "laptop": payload.get("laptop"),
                             "extra": payload.get("extra") or [],
+                            "deviceMeta": device_meta,
+                            "deviceId": device_id,
+                            "source": source,
+                            "os": os_name,
                         },
                     )
                 self.stdout.write(f"  scanned successfully: EXPIRED at {ts}")
@@ -174,6 +222,10 @@ class Command(BaseCommand):
                     laptop=laptop,
                     extra=extra or [],
                     scanned_at=ts,
+                    source=source,
+                    os=os_name,
+                    device_id=device_id,
+                    device_meta=device_meta,
                 )
                 OutboxEvent.objects.create(
                     event_type="ENTRY",
@@ -187,6 +239,10 @@ class Command(BaseCommand):
                         "entryFlag": new_entry.entry_flag,
                         "laptop": new_entry.laptop,
                         "extra": new_entry.extra or [],
+                        "deviceMeta": device_meta,
+                        "deviceId": device_id,
+                        "source": source,
+                        "os": os_name,
                     },
                 )
                 self.stdout.write(
@@ -206,6 +262,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  extra:  {extra}")
         self.stdout.write(f"  id:     {entry_id}")
         self.stdout.write(f"  exp:    {exp}")
+        self.stdout.write(f"  deviceMeta: {device_meta}")
 
         if options.get("json"):
             self.stdout.write(json.dumps(payload, indent=2, sort_keys=True))
@@ -225,13 +282,11 @@ class Command(BaseCommand):
         token_type = payload.get("type")  # 'emergency' for emergency tokens, None/missing for entry tokens
         laptop = payload.get("laptop")
         extra = payload.get("extra") or []
-
-        # Build device_meta
-        device_meta = {}
-        if is_expired:
-            device_meta["expired"] = True
-        if hasattr(settings, "GATE_DEVICE_ID"):
-            device_meta["gateDeviceId"] = settings.GATE_DEVICE_ID
+        device_ctx = self._extract_device_context(payload, is_expired=is_expired)
+        device_meta = dict(device_ctx["device_meta"] or {})
+        source = device_ctx["source"]
+        os_name = device_ctx["os"]
+        device_id = device_ctx["device_id"]
 
         # Determine entry reference
         entry_obj = None
@@ -256,6 +311,9 @@ class Command(BaseCommand):
                     laptop=laptop,
                     extra=extra,
                     device_meta=device_meta,
+                    source=source,
+                    os=os_name,
+                    device_id=device_id,
                     scanned_at=ts,
                 )
                 self._emit_exit_event(exit_log, roll)
@@ -281,6 +339,9 @@ class Command(BaseCommand):
             laptop=laptop,
             extra=extra,
             device_meta=device_meta,
+            source=source,
+            os=os_name,
+            device_id=device_id,
             scanned_at=ts,
         )
 
@@ -311,6 +372,9 @@ class Command(BaseCommand):
                 "laptop": exit_log.laptop,
                 "extra": exit_log.extra or [],
                 "deviceMeta": exit_log.device_meta or {},
+                "deviceId": exit_log.device_id,
+                "source": exit_log.source,
+                "os": exit_log.os,
             },
         )
 
