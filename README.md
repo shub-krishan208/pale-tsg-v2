@@ -445,3 +445,60 @@ curl -X POST http://localhost:8000/api/sync/gate/events \
 > **Exit flags:** `NORMAL_EXIT`, `EMERGENCY_EXIT`, `ORPHAN_EXIT`, `AUTO_EXIT`, `DUPLICATE_EXIT`
 
 ---
+
+## Dashboard
+
+A real-time summary dashboard to monitor occupancy and trends.
+
+### Access URLs
+
+| URL | Description |
+|-----|-------------|
+| `/dashboard/` | Staff dashboard (requires admin login) |
+| `/dashboard/?kiosk=1&token=<KIOSK_TOKEN>` | Kiosk mode (public display, large fonts, auto-refresh) |
+| `/admin/` | Django admin panel (has link to dashboard) |
+
+### Configuration
+
+Set the kiosk token in your environment:
+
+```bash
+# Generate a secure token
+python -c "import secrets; print(secrets.token_hex(32))"
+
+# Add to .env
+DASHBOARD_KIOSK_TOKEN=your-generated-token-here
+```
+
+### Features
+
+- **Today's Stats**: Current people inside, total entries, total exits
+- **Hourly Chart**: Bar chart showing entries/exits per hour today
+- **7-Day Trend**: Line chart showing daily patterns over the past week
+- **Kiosk Mode**: Large fonts, high contrast, auto-refresh every 30 seconds
+- **Admin Mode**: Full charts, 60-second refresh, link to admin panel
+
+### API Endpoint
+
+The dashboard fetches data from `/api/entries/summary/` which returns:
+
+```json
+{
+  "timestamp": "2026-01-18T10:30:00+05:30",
+  "today": {
+    "entries": 150,
+    "exits": 120,
+    "current_inside": 30
+  },
+  "hourly": [
+    {"hour": "2026-01-18T09:00:00+05:30", "entries": 45, "exits": 10}
+  ],
+  "daily_7d": [
+    {"date": "2026-01-12", "entries": 200, "exits": 195}
+  ]
+}
+```
+
+Authentication: Admin session (admin login) OR kiosk token via `?token=` query param or `X-Kiosk-Token` header.
+
+---
