@@ -99,11 +99,13 @@ class UserAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """
         Optimization: Annotate counts to solve N+1 query problem.
+        Note: distinct=True is required to avoid Cartesian product when
+        annotating multiple related counts in the same query.
         """
         qs = super().get_queryset(request)
         return qs.annotate(
-            _entry_count=Count('entry_logs'),
-            _exit_count=Count('exit_logs')
+            _entry_count=Count('entry_logs', distinct=True),
+            _exit_count=Count('exit_logs', distinct=True)
         )
 
     @admin.display(description="Entries", ordering="_entry_count")
