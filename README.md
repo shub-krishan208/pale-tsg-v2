@@ -554,6 +554,8 @@ python manage.py repair_sync_full --since 2026-01-01T00:00:00Z --until 2026-01-1
 python manage.py repair_sync_full --batch-size 100
 ```
 
+</details>
+
 ---
 
 ## API Endpoints
@@ -567,8 +569,6 @@ The gate app will not accept requests, won't be opened for connection. We have t
 | '/api/sync/gate/events/'     | for sync events                               |
 | '/api/entries/generate'      | for generating entry token (normal)           |
 | '/api/entries/generate/exit' | for generating exit logs (emergency, flagged) |
-
-</details>
 
 ## API Request Examples
 
