@@ -5,7 +5,7 @@ from pyzbar.pyzbar import decode
 
 # --- CONFIGURATION ---
 # The command or script to run when a QR is found
-COMMAND = ["/home/freak/rack/code_rack/tsg/pale-tsg-v2/scripts/qr_commands.sh"] 
+COMMAND = ["/Users/shub/rack/code-rack/tsg/pale-tsg-v2/scripts/qr_commands.sh"] 
 # How many seconds to wait before scanning again
 COOLDOWN_SECONDS = 2
 # ---------------------

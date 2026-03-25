@@ -3,7 +3,7 @@
 # The Python script passes the QR text as the first argument ($1).
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PY_BIN=/home/freak/rack/code_rack/tsg/pale-tsg-v2/.venv/bin/python
+PY_BIN=/Users/shub/rack/code_rack/tsg/pale-tsg-v2/.venv/bin/python
 
 TOKEN=$(echo "$1" | jq -r '.token')
 MODE=$(echo "$1" | jq -r '.mode')
