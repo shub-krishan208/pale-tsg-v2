@@ -1,0 +1,45 @@
+services:
+    # Postgres for backend
+    postgres-backend:
+        image: postgres:16
+        container_name: pale-backend-db
+        ports:
+            - "54322:5432"
+        environment:
+            POSTGRES_DB: pale_backend_db
+            POSTGRES_USER: ${DB_USER:-postgres}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+        volumes:
+            - postgres-backend-data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres -d pale_backend_db"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+            start_period: 30s
+
+    backend:
+        build:
+            context: .
+            dockerfile: backend/Dockerfile
+        container_name: pale-backend-server
+        ports:
+            - "8000:8000"
+        depends_on:
+            postgres-backend:
+                condition: service_healthy
+        env_file:
+            - .env
+        environment:
+            - DJANGO_ENV=development
+            - DB_NAME=pale_backend_db
+            - DB_USER=${DB_USER:-postgres}
+            - DB_PASSWORD=${DB_PASSWORD:-postgres}
+            - DB_HOST=postgres-backend
+            - DB_PORT=5432
+        command: sh -c "python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+        volumes:
+            - .:/app  # Optional: for hot reloading if needed on devserver
+
+volumes:
+    postgres-backend-data:
