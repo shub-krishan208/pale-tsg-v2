@@ -16,6 +16,5 @@ dependencies = [
     "pycparser>=3.0",
     "pyjwt>=2.11.0",
     "python-dotenv>=1.2.1",
-    "pyzbar>=0.1.9",
     "sqlparse>=0.5.5",
 ]

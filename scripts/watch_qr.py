@@ -1,22 +1,24 @@
 import cv2
 import subprocess
 import time
-from pyzbar.pyzbar import decode
 
 # --- CONFIGURATION ---
 # The command or script to run when a QR is found
-COMMAND = ["/Users/shub/rack/code-rack/tsg/pale-tsg-v2/scripts/qr_commands.sh"] 
+COMMAND = ["/Users/shub/rack/code-rack/tsg/pale-tsg-v2/scripts/qr_commands_mac.sh"]
 # How many seconds to wait before scanning again
 COOLDOWN_SECONDS = 2
 # ---------------------
 
+
 def start_watching():
     # 0 usually refers to the default webcam
-    cap = cv2.VideoCapture(0)
-    
+    cap = cv2.VideoCapture(1)
+
     if not cap.isOpened():
         print("Error: Could not open webcam.")
         return
+
+    detector = cv2.QRCodeDetector()
 
     last_scan_time = 0
     print(f"[*] Watching for QR codes... (Press 'q' to quit)")
@@ -30,14 +32,13 @@ def start_watching():
         # Only process if we are outside the cooldown period
         current_time = time.time()
         if current_time - last_scan_time > COOLDOWN_SECONDS:
-            
-            # Decode QR codes in the frame
-            decoded_objects = decode(frame)
-            
-            for obj in decoded_objects:
-                qr_data = obj.data.decode("utf-8")
+
+            # Decode QR codes in the frame using OpenCV's built-in detector
+            qr_data, points, _ = detector.detectAndDecode(frame)
+
+            if qr_data:
                 # print(f"[!] QR Detected: {qr_data}")
-                
+
                 # --- EXECUTE THE COMMAND ---
                 # We pass the QR data as an argument to your script just in case you need it
                 try:
@@ -45,11 +46,9 @@ def start_watching():
                     print(f"    -> Command executed.")
                 except Exception as e:
                     print(f"    -> Error executing command: {e}")
-                
+
                 # Reset cooldown
                 last_scan_time = time.time()
-                # Break loop to avoid detecting the same code multiple times in one frame
-                break
 
         # Display the camera feed (Optional - helpful for aiming)
         cv2.imshow("QR Watcher (Press q to quit)", frame)
@@ -60,6 +59,7 @@ def start_watching():
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     start_watching()
