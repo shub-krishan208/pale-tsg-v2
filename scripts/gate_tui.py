@@ -6,6 +6,7 @@ import os
 import time
 import shutil
 import termios
+import tty
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -98,25 +99,51 @@ def extract_json_from_output(output):
         pass
     return None
 
+def read_line_with_feedback():
+    if not sys.stdin.isatty():
+        return sys.stdin.readline()
+        
+    chars = []
+    first_char = True
+    width = get_width()
+    while True:
+        c = sys.stdin.read(1)
+        if not c:
+            if not chars:
+                return ""
+            break
+            
+        if first_char:
+            sys.stdout.write("\033[1;33m" + "Scanning...".center(width) + "\033[0m\r")
+            sys.stdout.flush()
+            first_char = False
+            
+        if c == '\n' or c == '\r':
+            if chars:
+                sys.stdout.write("\033[1;32m" + "Scanned! Processing...".center(width) + "\033[0m\n")
+                sys.stdout.flush()
+                break
+        else:
+            chars.append(c)
+            
+    return "".join(chars)
+
 def start_watching():
     if not PYTHON_BIN.exists():
         print(f"Error: Python binary not found at {PYTHON_BIN}")
         sys.exit(1)
         
-    # Disable echo
     fd = sys.stdin.fileno()
     old_settings = None
     if sys.stdin.isatty():
         old_settings = termios.tcgetattr(fd)
-        new_settings = termios.tcgetattr(fd)
-        new_settings[3] = new_settings[3] & ~termios.ECHO
-        termios.tcsetattr(fd, termios.TCSADRAIN, new_settings)
+        tty.setcbreak(fd)
         
     try:
         show_idle()
         
         while True:
-            line = sys.stdin.readline()
+            line = read_line_with_feedback()
             if not line:
                 if not sys.stdin.isatty():
                     break
@@ -167,7 +194,6 @@ def start_watching():
             except json.JSONDecodeError:
                 pass
                 
-            # No longer clearing screen, just append the prompt again
             show_idle()
             
     except KeyboardInterrupt:
