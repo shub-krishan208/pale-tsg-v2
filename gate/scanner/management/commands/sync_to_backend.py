@@ -63,6 +63,21 @@ class Command(BaseCommand):
         run_once = bool(options.get("once"))
         # run_loop = bool(options.get("loop")) or not run_once
 
+        self.stdout.write(f"Testing connection to backend at {url} ...")
+        try:
+            resp = _post_events(url, api_key, [], timeout_s=timeout_s)
+            server_time = resp.get("serverTime", "unknown")
+            self.stdout.write(self.style.SUCCESS(f"Successfully connected! Server time: {server_time}"))
+        except urllib.error.HTTPError as e:
+            err_body = ""
+            try:
+                err_body = e.read().decode("utf-8")
+            except Exception:
+                pass
+            raise CommandError(f"Connection failed: HTTP {e.code} {err_body or str(e)}")
+        except Exception as e:
+            raise CommandError(f"Connection failed: {e}")
+
         while True:
             now = timezone.now()
             with transaction.atomic():
