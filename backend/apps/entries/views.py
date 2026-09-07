@@ -465,11 +465,10 @@ def _get_flags_data(start_date, end_date):
 @api_view(['GET'])
 @authentication_classes([SessionAuthentication])
 @permission_classes([AllowAny])
-@dashboard_auth_required
 def summary(request):
     """
     Read-only summary endpoint for dashboard.
-    Requires staff session or valid kiosk token.
+    Publicly accessible.
     
     Query params:
     - view: default|month|year|range|flags
