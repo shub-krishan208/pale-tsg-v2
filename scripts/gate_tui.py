@@ -139,6 +139,12 @@ def start_watching():
         old_settings = termios.tcgetattr(fd)
         tty.setcbreak(fd)
         
+    print_centered("Starting background sync...", "\033[1;36m", "\033[0m")
+    sync_proc = subprocess.Popen(
+        [str(PYTHON_BIN), str(MANAGE_PY), "sync_to_backend", "--loop", "--mute"],
+        stdout=subprocess.DEVNULL, # Mute stdout since it has its own logging, but stderr will pass through if CommandError happens
+    )
+        
     try:
         show_idle()
         
@@ -204,6 +210,9 @@ def start_watching():
         # Restore echo
         if old_settings and sys.stdin.isatty():
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        if sync_proc.poll() is None:
+            sync_proc.terminate()
+            sync_proc.wait()
 
 if __name__ == "__main__":
     start_watching()

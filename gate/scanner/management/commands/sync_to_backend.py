@@ -34,7 +34,23 @@ def _post_events(url: str, api_key: str, events: list[dict], timeout_s: int) -> 
             "X-GATE-API-KEY": api_key,
         },
     )
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+    class PostRedirectHandler(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, headers, newurl):
+            m = req.get_method()
+            if code in (301, 302, 307, 308) and m == "POST":
+                new_req = urllib.request.Request(
+                    newurl,
+                    data=req.data,
+                    headers=req.headers,
+                    origin_req_host=req.origin_req_host,
+                    unverifiable=True,
+                    method="POST"
+                )
+                return new_req
+            return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+    opener = urllib.request.build_opener(PostRedirectHandler)
+    with opener.open(req, timeout=timeout_s) as resp:
         raw = resp.read().decode("utf-8")
     return json.loads(raw or "{}")
 
@@ -47,8 +63,27 @@ class Command(BaseCommand):
         parser.add_argument("--loop", action="store_true", help="Run forever (default).")
         parser.add_argument("--batch-size", type=int, default=None, help="Override SYNC_BATCH_SIZE.")
         parser.add_argument("--sleep", type=int, default=None, help="Override SYNC_INTERVAL_SECONDS.")
+        parser.add_argument("--mute", action="store_true", help="Mute stdout/stderr and log to gate/logs/sync_logs.txt")
+
+    def _log(self, msg: str, is_error: bool = False, style_func=None):
+        ts = timezone.now().strftime('%Y-%m-%d %H:%M:%S')
+        log_msg = f"[{ts}] {msg}"
+        if self.is_muted:
+            from pathlib import Path
+            log_dir = Path(settings.BASE_DIR) / "logs"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            log_file = log_dir / "sync_logs.txt"
+            with open(log_file, "a") as f:
+                f.write(log_msg + "\n")
+        else:
+            out = self.stderr if is_error else self.stdout
+            if style_func:
+                out.write(style_func(log_msg))
+            else:
+                out.write(log_msg)
 
     def handle(self, *args, **options):
+        self.is_muted = bool(options.get("mute"))
         url = getattr(settings, "BACKEND_SYNC_URL", "")
         api_key = getattr(settings, "GATE_API_KEY", "")
         if not url:
@@ -63,11 +98,11 @@ class Command(BaseCommand):
         run_once = bool(options.get("once"))
         # run_loop = bool(options.get("loop")) or not run_once
 
-        self.stdout.write(f"Testing connection to backend at {url} ...")
+        self._log(f"Testing connection to backend at {url} ...")
         try:
             resp = _post_events(url, api_key, [], timeout_s=timeout_s)
             server_time = resp.get("serverTime", "unknown")
-            self.stdout.write(self.style.SUCCESS(f"Successfully connected! Server time: {server_time}"))
+            self._log(f"Successfully connected! Server time: {server_time}", style_func=self.style.SUCCESS)
         except urllib.error.HTTPError as e:
             err_body = ""
             try:
@@ -123,9 +158,7 @@ class Command(BaseCommand):
                                 last_attempt_at=sent_ts,
                             )
 
-                self.stdout.write(
-                    f"{timezone.now().strftime('%Y-%m-%d %H:%M:%S')} | synced batch={len(batch)} acked={len(acked_ids)} rejected={len(rejected_map)}"
-                )
+                self._log(f"synced batch={len(batch)} acked={len(acked_ids)} rejected={len(rejected_map)}")
 
             except urllib.error.HTTPError as e:
                 # 4xx/5xx with body
@@ -160,6 +193,6 @@ class Command(BaseCommand):
             batch, 
             fields=["attempt_count", "last_attempt_at", "next_retry_at", "last_error"]
         )
-        self.stderr.write(f"{timezone.now().strftime('%Y-%m-%d %H:%M:%S')} | sync failed; scheduled retry for {len(batch)} events: {err}")
+        self._log(f"sync failed; scheduled retry for {len(batch)} events: {err}", is_error=True)
     
 
