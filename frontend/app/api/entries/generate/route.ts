@@ -43,6 +43,6 @@ export async function POST(request: Request) {
         return NextResponse.json(data);
     } catch (error: any) {
         console.error('Error in Next.js generate route:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ error: 'Next.js Proxy Error: ' + error.message, stack: error.stack }, { status: 500 });
     }
 }
