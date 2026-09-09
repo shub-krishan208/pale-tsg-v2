@@ -13,6 +13,7 @@ type QRDisplayProps = {
 };
 
 export function QRDisplay({ onEdit, token }: QRDisplayProps) {
+    const [mode, setMode] = React.useState<"entry" | "exit">("entry");
     const [secondsLeft, setSecondsLeft] = React.useState(14);
     const [isFullscreen, setIsFullscreen] = React.useState(false);
     const [qrDataUrl, setQrDataUrl] = React.useState<string | null>(null);
@@ -24,7 +25,7 @@ export function QRDisplay({ onEdit, token }: QRDisplayProps) {
     const activeToken = token || window.localStorage.getItem("lib_pass_token");
     console.log(activeToken);
     
-    // Generate QR code from token
+    // Generate QR code from token and mode
     React.useEffect(() => {
         if (!activeToken) {
             setQrError(true);
@@ -32,7 +33,9 @@ export function QRDisplay({ onEdit, token }: QRDisplayProps) {
             return;
         }
 
-        QRCode.toDataURL(activeToken, {
+        const payload = JSON.stringify({ token: activeToken, mode });
+
+        QRCode.toDataURL(payload, {
             width: 512,
             margin: 2,
             color: {
@@ -50,7 +53,7 @@ export function QRDisplay({ onEdit, token }: QRDisplayProps) {
                 setQrError(true);
                 addToast("Failed to generate QR code", { error: true });
             });
-    }, [activeToken, addToast]);
+    }, [activeToken, mode, addToast]);
 
     React.useEffect(() => {
         const total = 15;
@@ -141,9 +144,35 @@ export function QRDisplay({ onEdit, token }: QRDisplayProps) {
                 </button>
                 <Card className="border-white/10 bg-white/5 py-0 shadow-none backdrop-blur">
                     <CardContent className="flex flex-col gap-5 px-6 py-6 justify-center items-center">
-                        <div className="text-center">
+                        <div className="text-center w-full">
                             <h3 className="text-lg font-semibold text-white">Entry & Exit Pass</h3>
-                            <p className="text-sm text-white/50">Save and scan to enter and exit</p>
+                            <p className="text-sm text-white/50 mb-4">Save and scan to enter and exit</p>
+                            
+                            {/* Mode Toggle */}
+                            <div className="flex bg-black/20 rounded-lg p-1 w-full max-w-[200px] mx-auto mb-2 border border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("entry")}
+                                    className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${
+                                        mode === "entry" 
+                                            ? "bg-emerald-500 text-white shadow-sm" 
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                    }`}
+                                >
+                                    Entry
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMode("exit")}
+                                    className={`flex-1 py-1.5 text-sm font-semibold rounded-md transition-all ${
+                                        mode === "exit" 
+                                            ? "bg-rose-500 text-white shadow-sm" 
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                    }`}
+                                >
+                                    Exit
+                                </button>
+                            </div>
                         </div>
                         <div 
                             ref={qrRef} 

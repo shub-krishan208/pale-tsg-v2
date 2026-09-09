@@ -4,9 +4,8 @@ export async function apiCall<T = any>(
   path: string,
   body: SessionData): Promise<{ data?: T }> {
   try {
-    
-    const baseURL = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const url = `${baseURL}${path}`;
+    // We hit the Next.js API route, which proxies to Django
+    const url = path;
 
     const res = await fetch(url, {
         method: "POST",

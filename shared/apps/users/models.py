@@ -3,6 +3,7 @@ from django.db import models
 
 class User(models.Model):
     roll = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=255, null=True, blank=True)
         
     class Meta:
         app_label = "users"

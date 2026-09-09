@@ -9,13 +9,15 @@ const DEFAULT_ROLL = "24MA10063";
 
 type SavedFormData = {
     roll: string;
+    name?: string;
 };
 
 export function EntryPassClient() {
     const [roll, setRoll] = React.useState(DEFAULT_ROLL);
+    const [name, setName] = React.useState("");
     const [isLoaded, setIsLoaded] = React.useState(false);
 
-    // Load saved roll from localStorage on mount
+    // Load saved roll and name from localStorage on mount
     React.useEffect(() => {
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
@@ -23,6 +25,9 @@ export function EntryPassClient() {
                 const data: SavedFormData = JSON.parse(saved);
                 if (data.roll) {
                     setRoll(data.roll);
+                }
+                if (data.name) {
+                    setName(data.name);
                 }
             }
         } catch (error) {
@@ -35,9 +40,21 @@ export function EntryPassClient() {
         setRoll(newRoll);
     };
 
+    const handleNameChange = (newName: string) => {
+        setName(newName);
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const data: SavedFormData = saved ? JSON.parse(saved) : {};
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, name: newName }));
+        } catch (error) {
+            console.error("Failed to save name:", error);
+        }
+    };
+
     const user: EntryPassUser = {
         roll,
-        // name and department can be fetched from backend
+        name: name || undefined,
+        // department can be fetched from backend
     };
 
     // Don't render until we've loaded from localStorage to prevent hydration mismatch
@@ -67,7 +84,7 @@ export function EntryPassClient() {
                 </header>
 
                 {/* Profile */}
-                <UserProfile user={user} onRollChange={handleRollChange} />
+                <UserProfile user={user} onRollChange={handleRollChange} onNameChange={handleNameChange} />
 
                 {/* Asset Declaration Form */}
                 <AssetDeclarationForm roll={roll} />

@@ -87,8 +87,8 @@ class ExitLogInline(admin.TabularInline):
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
-    list_display = ("roll", "entry_log_count", "exit_log_count", "view_logs_actions")
-    search_fields = ("roll",)
+    list_display = ("roll", "name", "entry_log_count", "exit_log_count", "view_logs_actions")
+    search_fields = ("roll", "name")
     ordering = ("roll",)
     inlines = (EntryLogInline, ExitLogInline)
     # entry_logs_link and exit_logs_link removed from fields/readonly 
