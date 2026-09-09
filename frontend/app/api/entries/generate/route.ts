@@ -8,7 +8,7 @@ export async function POST(request: Request) {
         const body = await request.json();
 
         // Pass the request to the Django backend to get the signed token
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+        const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
         const backendRes = await fetch(`${backendUrl}/api/entries/generate/`, {
             method: 'POST',
             headers: {
