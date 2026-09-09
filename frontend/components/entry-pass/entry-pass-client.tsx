@@ -62,7 +62,8 @@ export function EntryPassClient() {
         return (
             <div className="mx-auto w-full max-w-sm px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
                 <header className="relative flex items-center justify-center py-3">
-                    <h1 className="text-base font-semibold tracking-tight">
+                    <img src="/frontend/tsg-logo.svg" alt="TSG Logo" className="h-8 w-auto absolute left-0" />
+                    <h1 className="text-base font-semibold tracking-tight mx-auto">
                         Library Entry Pass
                     </h1>
                 </header>
@@ -75,10 +76,11 @@ export function EntryPassClient() {
 
     return (
         <ToastProvider>
-            <div className="mx-auto w-full max-w-sm px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className="mx-auto w-full max-w-sm px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] flex flex-col min-h-dvh">
                 {/* Top bar */}
-                <header className="relative flex items-center justify-center py-3">
-                    <h1 className="text-base font-semibold tracking-tight">
+                <header className="relative flex items-center py-3">
+                    <img src="/frontend/tsg-logo.svg" alt="TSG Logo" className="h-8 w-auto absolute left-0" />
+                    <h1 className="text-base font-semibold tracking-tight mx-auto">
                         Library Entry Pass
                     </h1>
                 </header>
@@ -87,7 +89,22 @@ export function EntryPassClient() {
                 <UserProfile user={user} onRollChange={handleRollChange} onNameChange={handleNameChange} />
 
                 {/* Asset Declaration Form */}
-                <AssetDeclarationForm roll={roll} />
+                <div className="flex-1">
+                    <AssetDeclarationForm roll={roll} />
+                </div>
+
+                {/* Footer */}
+                <footer className="mt-10 mb-4 border-t border-white/10 pt-6">
+                    <div className="flex flex-col items-center gap-3">
+                        <div className="flex items-center gap-2 text-xs text-white/60">
+                            <span>A joint initiative with</span>
+                            <img src="/frontend/devsoc-logo.jpg" alt="DevSoc Logo" className="h-5 w-auto rounded-sm mix-blend-screen opacity-90" />
+                        </div>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest">
+                            &copy; 2026 Developers' Society
+                        </p>
+                    </div>
+                </footer>
             </div>
         </ToastProvider>
     );
