@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   basePath: '/frontend',
+  trailingSlash: true,
   /* config options here */
   async headers() {
     return [
