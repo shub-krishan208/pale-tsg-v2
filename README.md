@@ -804,3 +804,4 @@ The dashboard fetches data from `/api/entries/summary/` which returns:
 Authentication: Admin session (admin login) OR kiosk token via `?token=` query param or `X-Kiosk-Token` header.
 
 ---
+
