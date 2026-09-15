@@ -59,6 +59,7 @@ export async function POST(request: Request) {
         flag: simDirection === "entry" ? "NORMAL_ENTRY" : "NORMAL_EXIT",
         mode: simDirection,
         roll: body.roll || "21CS10042",
+        name: body.name || null,
         laptop: body.laptop || null,
         extra: Array.isArray(body.extra) ? body.extra : [],
         message: `${simDirection.toUpperCase()} permitted`,
@@ -163,6 +164,7 @@ export async function POST(request: Request) {
     }
 
     const roll = payload.roll || payload.rollNumber || payload.sub || "UNKNOWN";
+    const name = payload.name || null;
     const laptop = payload.laptop || null;
     const extra = Array.isArray(payload.extra) ? payload.extra : [];
 
@@ -172,6 +174,7 @@ export async function POST(request: Request) {
       flag,
       mode: resolvedMode,
       roll,
+      name,
       laptop,
       extra,
       message: `${resolvedMode.toUpperCase()} verified successfully`,

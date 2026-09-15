@@ -13,6 +13,7 @@ export interface ScanResult {
   flag: string;
   mode: "entry" | "exit";
   roll?: string;
+  name?: string;
   laptop?: string | null;
   extra?: AssetItem[];
   message?: string;
