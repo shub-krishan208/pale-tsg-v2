@@ -24,6 +24,7 @@ export type ToastOptions = {
 
 export type SessionData = {
     roll: string;
+    name?: string;
     laptop: string;
     extra: ListItem[];
 }

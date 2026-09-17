@@ -16,6 +16,8 @@ import { apiCall } from "@/app/api";
 
 type AssetDeclarationFormProps = {
     roll: string;
+    name?: string;
+    onRequireProfile?: () => void;
 };
 
 const STORAGE_KEY = "library-pass-form";
@@ -23,13 +25,14 @@ const TOKEN_KEY = "lib_pass_token";
 
 type SavedFormData = {
     roll: string;
+    name?: string;
     laptopName: string;
     carryingDevice: boolean;
     personalBooks: ListItem[];
     extraGadgets: ListItem[];
 };
 
-export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
+export function AssetDeclarationForm({ roll, name = "", onRequireProfile }: AssetDeclarationFormProps) {
     const { toasts, addToast, removeToast, updateToast } = useToast();
 
     const [carryingDevice, setCarryingDevice] = React.useState(true);
@@ -85,8 +88,13 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 const data: SavedFormData = JSON.parse(saved);
-                // Only autofill if the roll matches
-                if (data.roll === roll) {
+                // Only autofill if the roll matches or name matches when roll is empty
+                const isMatch =
+                    (roll && data.roll === roll) ||
+                    (!roll && name && data.name === name) ||
+                    (!roll && !data.roll);
+
+                if (isMatch) {
                     setLaptopName(data.laptopName || "");
                     setCarryingDevice(data.carryingDevice ?? true);
                     setPersonalBooks(data.personalBooks || []);
@@ -96,13 +104,14 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
         } catch (error) {
             console.error("Failed to load saved form data:", error);
         }
-    }, [roll]);
+    }, [roll, name]);
 
     // Save form data to localStorage
     const saveFormData = () => {
         try {
             const data: SavedFormData = {
                 roll,
+                name,
                 laptopName,
                 carryingDevice,
                 personalBooks,
@@ -123,6 +132,13 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
         extraGadgets.length === 0;
 
     const handleCompleteClick = () => {
+        // Validate user identity - at least roll or name must be non-empty
+        if (!roll.trim() && !name.trim()) {
+            addToast("Please provide your Roll Number or Name first", { error: true });
+            onRequireProfile?.();
+            return;
+        }
+
         // Validate - at least one field should have data
         if (isFormEmpty) {
             addToast("Please add at least one item", { error: true });
@@ -373,6 +389,7 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
                 onClose={() => setShowConfirmModal(false)}
                 onConfirm={handleConfirm}
                 roll={roll}
+                name={name}
                 laptopName={laptopName}
                 carryingDevice={carryingDevice}
                 personalBooks={personalBooks}
@@ -385,6 +402,7 @@ export function AssetDeclarationForm({ roll }: AssetDeclarationFormProps) {
                     isOpen={showDetailsModal}
                     onClose={() => setShowDetailsModal(false)}
                     roll={savedFormData.roll}
+                    name={savedFormData.name}
                     laptopName={savedFormData.laptopName}
                     personalBooks={savedFormData.personalBooks}
                     extraGadgets={savedFormData.extraGadgets}

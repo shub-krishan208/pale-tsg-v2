@@ -56,6 +56,7 @@ def dashboard_auth_required(view_func):
 
 @api_view(['POST'])
 def generate_token(request):
+    print("REQUEST DATA:", request.data)
     serializer = TokenGenerateRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
@@ -72,6 +73,7 @@ def generate_token(request):
     payload = {
         'entryId': str(entry.id),
         'roll': data['roll'],
+        'name': data.get('name') or 'Unknown',
         'action': 'ENTERING',
         'laptop': data.get('laptop') or None,
         'extra': data.get('extra') or [],
@@ -122,6 +124,7 @@ def generate_emergency_exit_token(request):
     payload = {
         'entryId': str(active_entry.id),
         'roll': roll,
+        'name': data.get('name') or 'Unknown',
         'action': 'EXITING',
         'type': 'emergency',
         'laptop': laptop,

@@ -357,6 +357,9 @@ class Command(BaseCommand):
 
         self.stdout.write("ALLOW:")
         self.stdout.write(f"  roll:   {roll}")
+        name = payload.get("name")
+        if name:
+            self.stdout.write(f"  name:   {name}")
         self.stdout.write(f"  action: {action}")
         self.stdout.write(f"  laptop: {laptop}")
         self.stdout.write(f"  extra:  {extra}")

@@ -3,9 +3,7 @@
 import * as React from "react";
 import { ToastProvider, UserProfile, AssetDeclarationForm } from "@/components/entry-pass";
 import type { EntryPassUser } from "@/components/entry-pass";
-
 const STORAGE_KEY = "library-pass-form";
-const DEFAULT_ROLL = "24MA10063";
 
 type SavedFormData = {
     roll: string;
@@ -13,9 +11,10 @@ type SavedFormData = {
 };
 
 export function EntryPassClient() {
-    const [roll, setRoll] = React.useState(DEFAULT_ROLL);
+    const [roll, setRoll] = React.useState("");
     const [name, setName] = React.useState("");
     const [isLoaded, setIsLoaded] = React.useState(false);
+    const [forceEditTrigger, setForceEditTrigger] = React.useState(0);
 
     // Load saved roll and name from localStorage on mount
     React.useEffect(() => {
@@ -38,13 +37,20 @@ export function EntryPassClient() {
 
     const handleRollChange = (newRoll: string) => {
         setRoll(newRoll);
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            const data: SavedFormData = saved ? JSON.parse(saved) : { roll: "" };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, roll: newRoll }));
+        } catch (error) {
+            console.error("Failed to save roll:", error);
+        }
     };
 
     const handleNameChange = (newName: string) => {
         setName(newName);
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
-            const data: SavedFormData = saved ? JSON.parse(saved) : {};
+            const data: SavedFormData = saved ? JSON.parse(saved) : { roll: "" };
             localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...data, name: newName }));
         } catch (error) {
             console.error("Failed to save name:", error);
@@ -86,11 +92,20 @@ export function EntryPassClient() {
                 </header>
 
                 {/* Profile */}
-                <UserProfile user={user} onRollChange={handleRollChange} onNameChange={handleNameChange} />
+                <UserProfile
+                    user={user}
+                    onRollChange={handleRollChange}
+                    onNameChange={handleNameChange}
+                    forceEditTrigger={forceEditTrigger}
+                />
 
                 {/* Asset Declaration Form */}
                 <div className="flex-1">
-                    <AssetDeclarationForm roll={roll} />
+                    <AssetDeclarationForm
+                        roll={roll}
+                        name={name}
+                        onRequireProfile={() => setForceEditTrigger((prev) => prev + 1)}
+                    />
                 </div>
 
                 {/* Footer */}
