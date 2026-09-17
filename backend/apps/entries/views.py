@@ -56,6 +56,7 @@ def dashboard_auth_required(view_func):
 
 @api_view(['POST'])
 def generate_token(request):
+    print("REQUEST DATA:", request.data)
     serializer = TokenGenerateRequestSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     
