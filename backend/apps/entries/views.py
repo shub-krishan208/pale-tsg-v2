@@ -72,6 +72,7 @@ def generate_token(request):
     payload = {
         'entryId': str(entry.id),
         'roll': data['roll'],
+        'name': data.get('name') or 'Unknown',
         'action': 'ENTERING',
         'laptop': data.get('laptop') or None,
         'extra': data.get('extra') or [],
@@ -122,6 +123,7 @@ def generate_emergency_exit_token(request):
     payload = {
         'entryId': str(active_entry.id),
         'roll': roll,
+        'name': data.get('name') or 'Unknown',
         'action': 'EXITING',
         'type': 'emergency',
         'laptop': laptop,

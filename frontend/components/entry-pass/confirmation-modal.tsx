@@ -10,6 +10,7 @@ type ConfirmationModalProps = {
     onClose: () => void;
     onConfirm: (sessionData: SessionData) => void;
     roll: string;
+    name?: string;
     laptopName: string;
     carryingDevice: boolean;
     personalBooks: ListItem[];
@@ -21,6 +22,7 @@ export function ConfirmationModal({
     onClose,
     onConfirm,
     roll,
+    name,
     laptopName,
     carryingDevice,
     personalBooks,
@@ -58,10 +60,11 @@ export function ConfirmationModal({
   
     const extraItems: ListItem[] = [...filledBooks, ...filledGadgets];  
     const sessionData: SessionData = {
-        roll,
+        roll: roll.trim() || name?.trim() || "",
+        name: name?.trim() || "",
         laptop: laptopName,
         extra: extraItems
-    }
+    };
     return (
         <div 
             className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -97,14 +100,25 @@ export function ConfirmationModal({
 
                 {/* Content */}
                 <div className="px-6 pb-4 space-y-3">
-                    {/* Roll Number */}
+                    {/* User Identity */}
                     <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
                         <div className="inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/20">
                             <User className="size-4 text-sky-400" />
                         </div>
-                        <div className="min-w-0">
-                            <div className="text-xs font-medium text-white/50">Roll Number</div>
-                            <div className="truncate text-sm font-medium text-white">{roll}</div>
+                        <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium text-white/50">Student Details</div>
+                            <div className="mt-0.5 space-y-0.5">
+                                {name ? (
+                                    <div className="truncate text-sm font-semibold text-white">{name}</div>
+                                ) : (
+                                    <div className="text-xs text-amber-300/80 italic">Name: (Not provided)</div>
+                                )}
+                                {roll ? (
+                                    <div className="truncate text-xs font-medium text-white/70">Roll: {roll}</div>
+                                ) : (
+                                    <div className="text-xs text-amber-300/80 italic">Roll: (Not provided)</div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
