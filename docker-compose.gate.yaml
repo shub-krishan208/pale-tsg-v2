@@ -4,18 +4,18 @@ services:
             context: .
             dockerfile: backend/Dockerfile
         container_name: pale-gate-worker
-        # Run the sync_to_backend loop in the background and the web server in the foreground
         command: sh -c "python manage.py migrate && python manage.py sync_to_backend --loop & python manage.py runserver 0.0.0.0:8000"
         working_dir: /app/gate
         env_file:
             - .env
+        network_mode: "host"
         environment:
             - TZ=Asia/Kolkata
             - DB_NAME=pale_gate_db
             - DB_USER=${DB_USER:-postgres}
             - DB_PASSWORD=${DB_PASSWORD:-postgres}
-            - DB_HOST=postgres-gate
-            - DB_PORT=5432
+            - DB_HOST=127.0.0.1
+            - DB_PORT=54323
             - BACKEND_SYNC_URL=https://pale.devsociitkgp.com/api/sync/gate/events
             - SYNC_BATCH_SIZE=${SYNC_BATCH_SIZE:-500}
             - SYNC_INTERVAL_SECONDS=${SYNC_INTERVAL_SECONDS:-5}
@@ -33,13 +33,12 @@ services:
             context: frontend
             dockerfile: Dockerfile
         container_name: pale-gate-frontend
-        ports:
-            - "3000:3000"
+        network_mode: "host"
         environment:
             - NEXT_PUBLIC_BACKEND_URL=https://pale.devsociitkgp.com
             - NEXT_PUBLIC_ALL_GREEN=${ALL_GREEN:-false}
+            - GATE_LOCAL_API_URL=http://127.0.0.1:8000
         volumes:
-            # Mount the keys directory so the frontend route.ts can find the public key
             - ./gate/keys:/app/keys:ro
             - ./backend/keys:/app/backend/keys:ro
         depends_on:
@@ -59,7 +58,6 @@ services:
         depends_on:
             - frontend
 
-    # Note: Added the db service because the gate Django app requires PostgreSQL as per settings.py
     postgres-gate:
         image: postgres:16
         container_name: pale-gate-db

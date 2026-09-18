@@ -45,8 +45,9 @@ def main():
                 if chars:
                     line = "".join(chars).strip()
                     chars = []
+                    print(f"[DEBUG] Received line: {line}", flush=True)
                     if line.startswith("{") and "token" in line:
-                        print(f"[*] Forwarding scan to UI: {line[:30]}...")
+                        print(f"[*] Forwarding scan to UI: {line[:30]}...", flush=True)
                         try:
                             req = urllib.request.Request(
                                 "http://localhost:3000/frontend/api/gate/local_relay/",
@@ -55,7 +56,9 @@ def main():
                             )
                             urllib.request.urlopen(req, timeout=2)
                         except Exception as e:
-                            print(f"[!] Failed to forward: {e}")
+                            print(f"[!] Failed to forward: {e}", flush=True)
+                    else:
+                        print(f"[!] Ignored non-JSON or invalid line: {line[:50]}", flush=True)
             else:
                 chars.append(c)
         except KeyboardInterrupt:
