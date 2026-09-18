@@ -15,5 +15,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.urls import path
+from scanner.views import process_scan
 
-urlpatterns = []
+urlpatterns = [
+    path("api/process_scan/", process_scan, name="process_scan"),
+]

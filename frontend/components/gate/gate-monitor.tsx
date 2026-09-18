@@ -257,10 +257,13 @@ export function GateMonitor() {
   const books = activeScan?.extra?.filter((item) => item.type === "books" || item.type === "book") || [];
   const gadgets = activeScan?.extra?.filter((item) => item.type === "gadgets" || item.type === "gadget") || [];
   
+  const allGreen = process.env.NEXT_PUBLIC_ALL_GREEN === "true";
+  
   const isSuccess = activeScan?.status === "ALLOWED";
   const isExit = isSuccess && activeScan?.mode === "exit";
-  const statusBgClass = !isSuccess ? "bg-[#DC2626] dark:bg-[#F43F5E]" : isExit ? "bg-[#EA580C] dark:bg-[#F97316]" : "bg-[#059669] dark:bg-[#10B981]";
-  const statusTextClass = !isSuccess ? "text-[#DC2626] dark:text-[#F43F5E]" : isExit ? "text-[#EA580C] dark:text-[#F97316]" : "text-[#059669] dark:text-[#10B981]";
+  
+  const statusBgClass = allGreen ? "bg-[#059669] dark:bg-[#10B981]" : (!isSuccess ? "bg-[#DC2626] dark:bg-[#F43F5E]" : isExit ? "bg-[#EA580C] dark:bg-[#F97316]" : "bg-[#059669] dark:bg-[#10B981]");
+  const statusTextClass = allGreen ? "text-[#059669] dark:text-[#10B981]" : (!isSuccess ? "text-[#DC2626] dark:text-[#F43F5E]" : isExit ? "text-[#EA580C] dark:text-[#F97316]" : "text-[#059669] dark:text-[#10B981]");
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0F172A] text-[#172033] dark:text-[#F1F5F9] font-sans flex flex-col selection:bg-blue-200 dark:selection:bg-blue-900/50">

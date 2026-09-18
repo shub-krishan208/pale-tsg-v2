@@ -1,0 +1,16 @@
+[Unit]
+Description=Gate Kiosk Docker Compose Service
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/pale-tsg-v2
+# Adjust the WorkingDirectory to wherever you clone the pale-tsg-v2 repo on the gate PC.
+ExecStart=/usr/local/bin/docker-compose -f docker-compose.gate.yaml up -d --build
+ExecStop=/usr/local/bin/docker-compose -f docker-compose.gate.yaml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

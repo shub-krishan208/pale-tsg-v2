@@ -68,118 +68,41 @@ export async function POST(request: Request) {
       });
     }
 
-    // --- 2. Live Token Verification (Common Scanning Mode) ---
-    // Try finding public key for RS256 verification
-    const possibleKeyPaths = [
-      path.join(process.cwd(), "keys", "public.pem"),
-      path.join(process.cwd(), "..", "gate", "keys", "public.pem"),
-      path.join(process.cwd(), "..", "backend", "keys", "public.pem"),
-    ];
+    // --- 2. Live Token Verification (Forward to Django Gate Backend) ---
+    // The gate backend handles DB persistence and calls process_token logic
+    const gateBackendUrl = process.env.GATE_LOCAL_API_URL || "http://gate:8000";
+    
+    const res = await fetch(`${gateBackendUrl}/api/process_scan/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token, mode: body.mode || "entry" }),
+    });
 
-    let publicKey: string | null = null;
-    for (const keyPath of possibleKeyPaths) {
-      if (fs.existsSync(keyPath)) {
-        try {
-          publicKey = fs.readFileSync(keyPath, "utf-8");
-          break;
-        } catch {
-          // ignore read error
-        }
-      }
-    }
-
-    let payload: any = null;
-    let isVerified = false;
-
-    if (publicKey) {
-      try {
-        payload = jwt.verify(token, publicKey, {
-          algorithms: ["RS256"],
-        });
-        isVerified = true;
-      } catch (err: any) {
-        if (err.name === "TokenExpiredError") {
-          return NextResponse.json({
-            success: false,
-            status: "DENIED",
-            flag: "TOKEN_EXPIRED",
-            mode: "entry",
-            message: "Token has expired. Please regenerate your pass.",
-            timestamp: new Date().toISOString(),
-          });
-        }
-        return NextResponse.json({
-          success: false,
-          status: "DENIED",
-          flag: "INVALID_SIGNATURE",
-          mode: "entry",
-          message: `Verification failed: ${err.message}`,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    } else {
-      // Fallback decode without signature verification (dev / offline mode)
-      try {
-        payload = jwt.decode(token);
-        if (!payload || typeof payload !== "object") {
-          payload = JSON.parse(token);
-        }
-      } catch {
-        try {
-          payload = JSON.parse(token);
-        } catch {
-          return NextResponse.json({
-            success: false,
-            status: "DENIED",
-            flag: "INVALID_TOKEN",
-            mode: "entry",
-            message: "Malformed token. Unable to decode scan payload.",
-            timestamp: new Date().toISOString(),
-          });
-        }
-      }
-    }
-
-    if (!payload) {
+    const data = await res.json();
+    
+    if (!res.ok || !data.success) {
       return NextResponse.json({
         success: false,
         status: "DENIED",
-        flag: "INVALID_PAYLOAD",
-        mode: "entry",
-        message: "Token payload is empty or unreadable.",
+        flag: data.flag || "ERROR",
+        mode: data.mode || "entry",
+        message: data.message || data.error || "Verification failed",
         timestamp: new Date().toISOString(),
       });
     }
 
-    // Determine direction from token claims (Common Mode automatically supports both Entry and Exit)
-    const tokenAction = (payload.action || payload.type || "").toUpperCase();
-    const resolvedMode =
-      tokenAction.includes("EXIT") || body.mode === "exit" ? "exit" : "entry";
-
-    let flag = resolvedMode === "entry" ? "NORMAL_ENTRY" : "NORMAL_EXIT";
-    if (payload.flag) {
-      flag = payload.flag;
-    } else if (payload.type === "emergency" || tokenAction.includes("EMERGENCY")) {
-      flag = "EMERGENCY_EXIT";
-    }
-
-    const roll = payload.roll || payload.rollNumber || payload.sub || "UNKNOWN";
-    const name = payload.name || null;
-    const laptop = payload.laptop || null;
-    const extra = Array.isArray(payload.extra) ? payload.extra : [];
-
     return NextResponse.json({
       success: true,
       status: "ALLOWED",
-      flag,
-      mode: resolvedMode,
-      roll,
-      name,
-      laptop,
-      extra,
-      message: `${resolvedMode.toUpperCase()} verified successfully`,
+      flag: data.flag,
+      mode: data.mode,
+      roll: data.roll,
+      name: data.name,
+      laptop: data.laptop,
+      extra: data.extra || [],
+      message: data.message,
       timestamp: new Date().toISOString(),
-      isVerified,
+      isVerified: true,
     });
   } catch (error: any) {
     console.error("Gate scan process error:", error);
