@@ -8,14 +8,15 @@ services:
         working_dir: /app/gate
         env_file:
             - .env
-        expose:
-            - "8000"
+        networks:
+            gatenet:
+                ipv4_address: 172.25.0.10
         environment:
             - TZ=Asia/Kolkata
             - DB_NAME=pale_gate_db
             - DB_USER=${DB_USER:-postgres}
             - DB_PASSWORD=${DB_PASSWORD:-postgres}
-            - DB_HOST=postgres-gate
+            - DB_HOST=172.25.0.11
             - DB_PORT=5432
             - BACKEND_SYNC_URL=https://pale.devsociitkgp.com/api/sync/gate/events
             - SYNC_BATCH_SIZE=${SYNC_BATCH_SIZE:-500}
@@ -36,10 +37,12 @@ services:
         container_name: pale-gate-frontend
         ports:
             - "3000:3000"
+        networks:
+            - gatenet
         environment:
             - NEXT_PUBLIC_BACKEND_URL=https://pale.devsociitkgp.com
             - NEXT_PUBLIC_ALL_GREEN=${ALL_GREEN:-false}
-            - GATE_LOCAL_API_URL=http://pale-gate-worker:8000
+            - GATE_LOCAL_API_URL=http://172.25.0.10:8000
         volumes:
             - ./gate/keys:/app/keys:ro
             - ./backend/keys:/app/backend/keys:ro
@@ -65,6 +68,9 @@ services:
         container_name: pale-gate-db
         ports:
             - "54323:5432"
+        networks:
+            gatenet:
+                ipv4_address: 172.25.0.11
         environment:
             POSTGRES_DB: pale_gate_db
             POSTGRES_USER: ${DB_USER:-postgres}
@@ -77,6 +83,12 @@ services:
             interval: 10s
             timeout: 5s
             retries: 5
+
+networks:
+    gatenet:
+        ipam:
+            config:
+                - subnet: 172.25.0.0/24
 
 volumes:
     postgres-gate-data:
