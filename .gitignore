@@ -23,3 +23,5 @@ local_settings.py
 .env*
 /uv.lock
 /preparation
+
+sync_logs*.txt
