@@ -6,8 +6,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { initials } from "./utils";
 import type { EntryPassUser } from "./types";
 
-// Roll format: 2 digits + 2 letters + 4-6 digits (e.g., 24MA10063)
-const ROLL_REGEX = /^\d{2}[A-Z]{2}\d{4,6}$/;
+// Roll format: alphanumeric string of max length 12
+const ROLL_REGEX = /^[A-Za-z0-9]{1,12}$/;
 
 function isValidRoll(roll: string): boolean {
     return ROLL_REGEX.test(roll);
@@ -206,12 +206,12 @@ export function UserProfile({ user, onRollChange, onNameChange, forceEditTrigger
                                 value={rollValue}
                                 placeholder="e.g., 24MA10063"
                                 onChange={(e) => {
-                                    setRollValue(e.target.value.toUpperCase());
+                                    setRollValue(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase());
                                     if (emptyError) setEmptyError(false);
                                     if (formatError) setFormatError(false);
                                 }}
                                 onKeyDown={handleKeyDown}
-                                maxLength={10}
+                                maxLength={12}
                                 className={`w-full truncate text-sm font-medium leading-5 bg-white/10 border rounded-lg px-2.5 py-1.5 text-white outline-none focus:ring-1 transition-colors ${
                                     formatError || (emptyError && isRollEmpty)
                                         ? "border-red-400 bg-red-500/10 focus:border-red-400 focus:ring-red-400/30"
@@ -222,7 +222,7 @@ export function UserProfile({ user, onRollChange, onNameChange, forceEditTrigger
                             />
                             {formatError && (
                                 <p className="mt-1 text-xs text-red-400 font-medium">
-                                    Invalid format (e.g., 24MA100XX)
+                                    Invalid format (alphanumeric, max 12 chars)
                                 </p>
                             )}
                             {emptyError && (
