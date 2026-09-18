@@ -65,6 +65,7 @@ def generate_token(request):
     
     entry = EntryLog.create_with_roll(
         roll=data['roll'],
+        name=data.get('name') or None,
         laptop=data.get('laptop') or None,
         extra=data.get('extra') or [],
         # default status is PENDING and entry_flag is NORMAL (will be changed if needed on gate)

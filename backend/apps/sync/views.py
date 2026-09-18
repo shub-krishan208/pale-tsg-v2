@@ -156,6 +156,10 @@ def gate_events(request):
                         raise ValueError("ENTRY deviceMeta must be an object")
 
                     user, _ = User.objects.get_or_create(roll=roll)
+                    ev_name = ev.get("name")
+                    if ev_name and (user.name != ev_name):
+                        user.name = ev_name
+                        user.save(update_fields=['name'])
 
                     existing = EntryLog.objects.filter(id=entry_id).only("id", "scanned_at").first()
                     if existing and not _should_apply_ts(existing.scanned_at, scanned_at):
@@ -205,6 +209,11 @@ def gate_events(request):
                         raise ValueError("EXIT deviceMeta must be an object")
 
                     user, _ = User.objects.get_or_create(roll=roll)
+                    ev_name = ev.get("name")
+                    if ev_name and (user.name != ev_name):
+                        user.name = ev_name
+                        user.save(update_fields=['name'])
+
                     entry_obj = None
                     if entry_id:
                         entry_uuid = _parse_uuid(entry_id)

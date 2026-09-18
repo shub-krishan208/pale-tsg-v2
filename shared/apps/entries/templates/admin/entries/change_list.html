@@ -1,0 +1,100 @@
+{% extends "admin/change_list.html" %}
+
+{% block search %}
+    {{ block.super }}
+    <style>
+        .custom-date-picker-container {
+            display: inline-flex;
+            align-items: center;
+            margin-left: 15px;
+            background: var(--body-bg, #fff);
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 4px;
+            padding: 2px 8px;
+            height: 30px;
+        }
+        .custom-date-picker-container label {
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 14px;
+        }
+        .custom-date-picker-container input[type="date"] {
+            border: none;
+            background: transparent;
+            color: var(--body-fg, #333);
+            outline: none;
+            cursor: pointer;
+            padding: 0;
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .custom-date-picker-container a.clear-date {
+            color: var(--error-fg, #ba2121);
+            text-decoration: none;
+            font-weight: bold;
+            margin-left: 8px;
+            padding: 0 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var toolbar = document.querySelector('#toolbar');
+            if (!toolbar) return;
+            
+            var params = new URLSearchParams(window.location.search);
+            var currentDate = params.get('created_at__date') || '';
+            
+            var container = document.createElement('div');
+            container.className = 'custom-date-picker-container';
+            
+            var label = document.createElement('label');
+            label.innerHTML = '📅';
+            label.setAttribute('for', 'custom_date_filter');
+            label.title = 'Filter by date';
+            
+            var input = document.createElement('input');
+            input.type = 'date';
+            input.id = 'custom_date_filter';
+            input.value = currentDate;
+            
+            container.appendChild(label);
+            container.appendChild(input);
+            
+            if (currentDate) {
+                var clearBtn = document.createElement('a');
+                clearBtn.className = 'clear-date';
+                clearBtn.innerHTML = '✖';
+                clearBtn.title = 'Clear date filter';
+                clearBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var url = new URL(window.location.href);
+                    url.searchParams.delete('created_at__date');
+                    window.location.href = url.toString();
+                });
+                container.appendChild(clearBtn);
+            }
+            
+            input.addEventListener('change', function() {
+                var url = new URL(window.location.href);
+                if (this.value) {
+                    url.searchParams.set('created_at__date', this.value);
+                } else {
+                    url.searchParams.delete('created_at__date');
+                }
+                window.location.href = url.toString();
+            });
+            
+            // Django's #toolbar uses a form which is display block by default.
+            // But it might have flex layout in newer Django versions.
+            toolbar.style.display = 'flex';
+            toolbar.style.alignItems = 'center';
+            toolbar.style.flexWrap = 'wrap';
+            
+            // Insert it into the toolbar (it will appear next to the search bar)
+            // The toolbar usually has a form as its first child. We append it to the toolbar itself.
+            toolbar.appendChild(container);
+        });
+    </script>
+{% endblock %}

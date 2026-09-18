@@ -45,8 +45,11 @@ class EntryLog(models.Model):
         ]
     
     @classmethod
-    def create_with_roll(cls, roll, **kwargs):
+    def create_with_roll(cls, roll, name=None, **kwargs):
         user, _ = User.objects.get_or_create(roll=roll)
+        if name and (user.name != name):
+            user.name = name
+            user.save(update_fields=['name'])
         return cls.objects.create(roll=user, **kwargs)
     
     def __str__(self):
@@ -91,8 +94,11 @@ class ExitLog(models.Model):
         ]
         
     @classmethod
-    def create_with_roll(cls, roll, **kwargs):
+    def create_with_roll(cls, roll, name=None, **kwargs):
         user, _ = User.objects.get_or_create(roll=roll)
+        if name and (user.name != name):
+            user.name = name
+            user.save(update_fields=['name'])
         return cls.objects.create(roll=user, **kwargs)
     
     
