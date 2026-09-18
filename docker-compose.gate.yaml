@@ -42,6 +42,22 @@ services:
             # Mount the keys directory so the frontend route.ts can find the public key
             - ./gate/keys:/app/keys:ro
             - ./backend/keys:/app/backend/keys:ro
+        depends_on:
+            - gate
+
+    serial-relay:
+        build:
+            context: .
+            dockerfile: backend/Dockerfile
+        container_name: pale-gate-serial-relay
+        command: python scripts/gate_serial_relay.py
+        working_dir: /app
+        volumes:
+            - .:/app
+        privileged: true
+        network_mode: "host"
+        depends_on:
+            - frontend
 
     # Note: Added the db service because the gate Django app requires PostgreSQL as per settings.py
     postgres-gate:
