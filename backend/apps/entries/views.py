@@ -77,6 +77,7 @@ def generate_token(request):
         'action': 'ENTERING',
         'laptop': data.get('laptop') or None,
         'extra': data.get('extra') or [],
+        'deviceMeta': {'source': 'WEB'},
     }
     
     token = generate_jwt_token(payload)
@@ -129,6 +130,7 @@ def generate_emergency_exit_token(request):
         'type': 'emergency',
         'laptop': laptop,
         'extra': extra,
+        'deviceMeta': {'source': 'WEB'},
     }
     
     # 5 minutes = 5/60 hours

@@ -46,6 +46,7 @@ def generate_entry_token(roll: str, laptop: str = None, extra: list = None) -> D
         'action': 'ENTERING',
         'laptop': laptop,
         'extra': extra or [],
+        'deviceMeta': {'source': 'WEB'},
     }
     
     # Generate token (24 hour expiry)
@@ -84,6 +85,7 @@ def generate_exit_token(roll: str) -> Dict[str, Any]:
         'roll': roll,
         'action': 'EXITING',
         'emergency': True,
+        'deviceMeta': {'source': 'WEB'},
     }
     
     # Generate token (1 hour expiry)
