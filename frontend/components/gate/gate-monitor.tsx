@@ -76,9 +76,11 @@ export function GateMonitor() {
   const [showManualInput, setShowManualInput] = React.useState<boolean>(false);
   const [manualToken, setManualToken] = React.useState<string>("");
   const [isProcessing, setIsProcessing] = React.useState<boolean>(false);
+  const [serialStatus, setSerialStatus] = React.useState<"disconnected" | "connected">("disconnected");
 
   const resetTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const processScanRef = React.useRef<((rawInput: string) => void) | null>(null);
 
   React.useEffect(() => {
     try {
@@ -224,6 +226,71 @@ export function GateMonitor() {
     }
   };
 
+  React.useEffect(() => {
+    processScanRef.current = processScanInput;
+  }, [processScanInput]);
+
+  const readSerialLoop = async (port: any) => {
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+    const reader = textDecoder.readable.getReader();
+    let buffer = "";
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        if (value) {
+          buffer += value;
+          const lines = buffer.split(/[\r\n]+/);
+          if (lines.length > 1) {
+            for (let i = 0; i < lines.length - 1; i++) {
+              const line = lines[i].trim();
+              if (line.length > 5 && processScanRef.current) {
+                processScanRef.current(line);
+              }
+            }
+            buffer = lines[lines.length - 1];
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Serial read error:", error);
+    } finally {
+      reader.releaseLock();
+      setSerialStatus("disconnected");
+    }
+  };
+
+  const connectSerial = async () => {
+    try {
+      if (!("serial" in navigator)) {
+        alert("Web Serial API not supported in this browser. Please use Chrome/Edge.");
+        return;
+      }
+      const port = await (navigator as any).serial.requestPort();
+      await port.open({ baudRate: 115200 });
+      setSerialStatus("connected");
+      readSerialLoop(port);
+    } catch (e) {
+      console.error("Serial connection failed:", e);
+    }
+  };
+
+  // Auto-connect if already permitted
+  React.useEffect(() => {
+    if ("serial" in navigator) {
+      (navigator as any).serial.getPorts().then((ports: any[]) => {
+        if (ports.length > 0) {
+          const port = ports[0];
+          port.open({ baudRate: 115200 }).then(() => {
+            setSerialStatus("connected");
+            readSerialLoop(port);
+          }).catch((e: any) => console.error("Auto-connect failed:", e));
+        }
+      });
+    }
+  }, []);
+
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
@@ -303,6 +370,14 @@ export function GateMonitor() {
               {currentDate}
             </span>
           </div>
+
+          <button
+            onClick={connectSerial}
+            className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-[6px] border border-[#D9E0E8] dark:border-[#2A3648] transition-colors ${serialStatus === 'connected' ? 'bg-[#10B981] text-white border-transparent' : 'bg-white dark:bg-[#111827] text-[#64748B] dark:text-[#94A3B8] hover:bg-[#F5F7FA] dark:hover:bg-[#1E293B]'}`}
+            title={serialStatus === 'connected' ? "USBCOM Scanner Connected" : "Connect USBCOM Scanner"}
+          >
+            <QrCode className="w-4 h-4" />
+          </button>
 
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
