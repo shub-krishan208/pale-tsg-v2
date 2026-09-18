@@ -6,6 +6,7 @@ services:
         ports:
             - "54322:5432"
         environment:
+            TZ: Asia/Kolkata
             POSTGRES_DB: pale_backend_db
             POSTGRES_USER: ${DB_USER:-postgres}
             POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
@@ -31,6 +32,7 @@ services:
         env_file:
             - .env
         environment:
+            - TZ=Asia/Kolkata
             - DJANGO_ENV=development
             - DB_NAME=pale_backend_db
             - DB_USER=${DB_USER:-postgres}
