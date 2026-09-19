@@ -424,8 +424,16 @@
                         </button>
                     </div>
                 </div>
-                <div class="text-xs text-adaptive-muted mb-3 font-medium" id="hourly-date-display">
-                    Today
+                <div class="flex items-center justify-between mb-3">
+                    <div class="text-xs text-adaptive-muted font-medium" id="hourly-date-display">
+                        Today
+                    </div>
+                    <button id="hourly-toggle-occupancy" class="preset-btn text-xs py-1 px-2.5 flex items-center gap-1.5 cursor-pointer" title="Toggle Occupancy Line">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        <span>Occupancy Line</span>
+                    </button>
                 </div>
                 <div class="h-64 relative">
                     <div id="hourly-chart-loading" class="chart-loading absolute inset-0 hidden">
@@ -638,6 +646,7 @@
         const state = {
             hourly: {
                 selectedDate: toISODateString(new Date()),
+                showOccupancy: false,
             },
             trend: {
                 view: 'month',
@@ -844,6 +853,19 @@
                 });
             }
 
+            const occupancyToggleBtn = document.getElementById('hourly-toggle-occupancy');
+            if (occupancyToggleBtn) {
+                occupancyToggleBtn.classList.toggle('active', state.hourly.showOccupancy);
+                occupancyToggleBtn.addEventListener('click', function() {
+                    state.hourly.showOccupancy = !state.hourly.showOccupancy;
+                    this.classList.toggle('active', state.hourly.showOccupancy);
+                    if (hourlyChart && hourlyChart.data.datasets[2]) {
+                        hourlyChart.data.datasets[2].hidden = !state.hourly.showOccupancy;
+                        hourlyChart.update();
+                    }
+                });
+            }
+
             updateHourlyDateUI(todayStr);
         }
 
@@ -880,26 +902,30 @@
             const exits = hourlyData.map(h => h.exits);
             const peopleInside = hourlyData.map(h => h.people_inside || 0);
 
+            const occupancyDataset = {
+                type: 'line',
+                label: 'People Inside',
+                data: peopleInside,
+                borderColor: 'rgba(96, 165, 250, 0.65)',
+                backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                borderWidth: 2,
+                pointRadius: 3,
+                pointHoverRadius: 5,
+                fill: true,
+                tension: 0.35,
+                order: 1,
+                hidden: !state.hourly.showOccupancy,
+            };
+
             if (hourlyChart) {
                 hourlyChart.data.labels = labels;
                 hourlyChart.data.datasets[0].data = entries;
                 hourlyChart.data.datasets[1].data = exits;
                 if (hourlyChart.data.datasets[2]) {
                     hourlyChart.data.datasets[2].data = peopleInside;
+                    hourlyChart.data.datasets[2].hidden = !state.hourly.showOccupancy;
                 } else {
-                    hourlyChart.data.datasets.push({
-                        type: 'line',
-                        label: 'People Inside',
-                        data: peopleInside,
-                        borderColor: 'rgba(96, 165, 250, 0.65)',
-                        backgroundColor: 'rgba(96, 165, 250, 0.08)',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointHoverRadius: 5,
-                        fill: true,
-                        tension: 0.35,
-                        order: 1,
-                    });
+                    hourlyChart.data.datasets.push(occupancyDataset);
                 }
                 hourlyChart.update('none');
             } else {
@@ -924,19 +950,7 @@
                                 borderRadius: 4,
                                 order: 2,
                             },
-                            {
-                                type: 'line',
-                                label: 'People Inside',
-                                data: peopleInside,
-                                borderColor: 'rgba(96, 165, 250, 0.65)',
-                                backgroundColor: 'rgba(96, 165, 250, 0.08)',
-                                borderWidth: 2,
-                                pointRadius: 3,
-                                pointHoverRadius: 5,
-                                fill: true,
-                                tension: 0.35,
-                                order: 1,
-                            }
+                            occupancyDataset
                         ]
                     },
                     options: {
