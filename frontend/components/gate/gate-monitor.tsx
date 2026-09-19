@@ -54,7 +54,7 @@ function playChime(type: "allow" | "deny") {
       osc.start(now);
       osc.stop(now + 0.4);
     }
-  } catch {}
+  } catch { }
 }
 
 const RESET_TIMEOUT_SECONDS = parseInt(
@@ -86,7 +86,7 @@ export function GateMonitor() {
     try {
       const stored = localStorage.getItem("gate_scan_history");
       if (stored) setScanHistory(JSON.parse(stored));
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const appendScanHistory = React.useCallback((result: ScanResult) => {
@@ -95,7 +95,7 @@ export function GateMonitor() {
       const next = [result, ...prev].slice(0, MAX_HISTORY);
       try {
         localStorage.setItem("gate_scan_history", JSON.stringify(next));
-      } catch (e) {}
+      } catch (e) { }
       return next;
     });
   }, []);
@@ -118,7 +118,7 @@ export function GateMonitor() {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) return;
-      
+
       const now = Date.now();
       if (now - lastKeyTime > 300) buffer = "";
       lastKeyTime = now;
@@ -172,19 +172,30 @@ export function GateMonitor() {
     setIsProcessing(true);
     setScreenState("PROCESSING");
 
+    let parsedMode: "entry" | "exit" | undefined = undefined;
     try {
       let token = rawInput;
       let extraPayload: any = {};
       try {
         const parsed = JSON.parse(rawInput);
         if (parsed.token) token = parsed.token;
+        if (parsed.mode === "entry" || parsed.mode === "exit") {
+          parsedMode = parsed.mode;
+        } else if (parsed.mode) {
+          parsedMode = parsed.mode;
+        }
         if (parsed.isSimulation) extraPayload = parsed;
-      } catch {}
+      } catch { }
 
       const res = await fetch("/frontend/api/gate/process/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, raw: rawInput, ...extraPayload }),
+        body: JSON.stringify({
+          token,
+          mode: parsedMode,
+          raw: rawInput,
+          ...extraPayload,
+        }),
       });
       const data = await res.json();
 
@@ -192,7 +203,7 @@ export function GateMonitor() {
         id: Math.random().toString(36).substring(2, 9),
         status: data.status === "ALLOWED" ? "ALLOWED" : "DENIED",
         flag: data.flag || (data.status === "ALLOWED" ? "NORMAL_ENTRY" : "DENIED"),
-        mode: (data.mode || "entry") as "entry" | "exit",
+        mode: (data.mode || parsedMode || "entry") as "entry" | "exit",
         roll: data.roll,
         name: data.name,
         laptop: data.laptop,
@@ -212,7 +223,7 @@ export function GateMonitor() {
         id: Math.random().toString(36).substring(2, 9),
         status: "DENIED",
         flag: "SCAN_ERROR",
-        mode: "entry",
+        mode: (parsedMode || "entry") as "entry" | "exit",
         message: err.message || "Failed to process scan token",
         timestamp: new Date().toLocaleTimeString("en-IN", { hour12: false }),
       };
@@ -248,11 +259,11 @@ export function GateMonitor() {
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => { });
       setIsFullscreen(true);
     } else {
       if (document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
+        document.exitFullscreen().catch(() => { });
         setIsFullscreen(false);
       }
     }
@@ -278,18 +289,18 @@ export function GateMonitor() {
 
   const books = activeScan?.extra?.filter((item) => item.type === "books" || item.type === "book") || [];
   const gadgets = activeScan?.extra?.filter((item) => item.type === "gadgets" || item.type === "gadget") || [];
-  
+
   const allGreen = process.env.NEXT_PUBLIC_ALL_GREEN === "true";
-  
+
   const isSuccess = activeScan?.status === "ALLOWED";
   const isExit = isSuccess && activeScan?.mode === "exit";
-  
+
   const statusBgClass = allGreen ? "bg-[#059669] dark:bg-[#10B981]" : (!isSuccess ? "bg-[#DC2626] dark:bg-[#F43F5E]" : isExit ? "bg-[#EA580C] dark:bg-[#F97316]" : "bg-[#059669] dark:bg-[#10B981]");
   const statusTextClass = allGreen ? "text-[#059669] dark:text-[#10B981]" : (!isSuccess ? "text-[#DC2626] dark:text-[#F43F5E]" : isExit ? "text-[#EA580C] dark:text-[#F97316]" : "text-[#059669] dark:text-[#10B981]");
 
   return (
     <div className="min-h-screen bg-[#F5F7FA] dark:bg-[#0F172A] text-[#172033] dark:text-[#F1F5F9] font-sans flex flex-col selection:bg-blue-200 dark:selection:bg-blue-900/50">
-      
+
       {/* Header */}
       <header className="h-[64px] sm:h-[72px] bg-white dark:bg-[#111827] border-b border-[#D9E0E8] dark:border-[#2A3648] px-4 sm:px-6 flex items-center justify-between z-30 shrink-0">
         <div className="flex items-center gap-3 sm:gap-4">
@@ -356,7 +367,7 @@ export function GateMonitor() {
 
       {/* Main Content Area */}
       <main className="flex-1 w-full max-w-[1050px] mx-auto px-4 sm:px-6 py-10 flex flex-col relative">
-        
+
         {screenState === "IDLE" && (
           <div className="flex flex-col items-center justify-center mt-12 sm:mt-24">
             <div className="w-16 h-16 rounded-[12px] border border-[#D9E0E8] dark:border-[#2A3648] bg-white dark:bg-[#111827] flex items-center justify-center mb-6 shadow-sm">
@@ -379,11 +390,11 @@ export function GateMonitor() {
           <div className="w-full bg-white dark:bg-[#111827] border border-[#D9E0E8] dark:border-[#2A3648] rounded-[10px] sm:rounded-[12px] shadow-sm relative overflow-hidden animate-in fade-in duration-200">
             {/* Top Accent Line */}
             <div className={`absolute top-0 left-0 right-0 h-1 ${statusBgClass}`}></div>
-            
+
             <div className="p-5 sm:p-8 pt-6 sm:pt-10">
               {/* Status Header */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 sm:mb-8 pb-5 sm:pb-6 border-b border-[#D9E0E8] dark:border-[#2A3648] gap-4 sm:gap-6">
-                
+
                 {/* Left: Primary Status */}
                 <div className="flex items-center gap-3 sm:gap-4 flex-1">
                   {isSuccess ? (
@@ -404,31 +415,28 @@ export function GateMonitor() {
                 {/* Center: Item Indicators */}
                 <div className="flex items-center gap-2 sm:gap-3 lg:justify-center">
                   {/* Laptop */}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${
-                    activeScan.laptop
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${activeScan.laptop
                       ? 'bg-[#F5F7FA] dark:bg-[#1E293B] border-[#D9E0E8] dark:border-[#2A3648] text-[#172033] dark:text-[#F1F5F9]'
                       : 'bg-transparent border-transparent text-[#94A3B8] dark:text-[#64748B] opacity-60'
-                  }`}>
+                    }`}>
                     <Laptop className="w-4 h-4" />
                     {activeScan.laptop && <Check className="w-4 h-4 text-[#059669] dark:text-[#10B981]" />}
                   </div>
 
                   {/* Books */}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${
-                    books.length > 0
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${books.length > 0
                       ? 'bg-[#F5F7FA] dark:bg-[#1E293B] border-[#D9E0E8] dark:border-[#2A3648] text-[#172033] dark:text-[#F1F5F9]'
                       : 'bg-transparent border-transparent text-[#94A3B8] dark:text-[#64748B] opacity-60'
-                  }`}>
+                    }`}>
                     <BookOpen className="w-4 h-4" />
                     {books.length > 0 && <span className="text-[13px] font-bold leading-none">{books.length}</span>}
                   </div>
 
                   {/* Gadgets */}
-                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${
-                    gadgets.length > 0
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-[6px] border ${gadgets.length > 0
                       ? 'bg-[#F5F7FA] dark:bg-[#1E293B] border-[#D9E0E8] dark:border-[#2A3648] text-[#172033] dark:text-[#F1F5F9]'
                       : 'bg-transparent border-transparent text-[#94A3B8] dark:text-[#64748B] opacity-60'
-                  }`}>
+                    }`}>
                     <Headphones className="w-4 h-4" />
                     {gadgets.length > 0 && <span className="text-[13px] font-bold leading-none">{gadgets.length}</span>}
                   </div>
@@ -461,11 +469,11 @@ export function GateMonitor() {
                 <div>
                   <div className="text-[12px] font-semibold text-[#64748B] dark:text-[#94A3B8] uppercase tracking-wider mb-4">REGISTERED ITEMS</div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-                    
+
                     {/* Laptop */}
                     <div className="bg-white dark:bg-[#111827] border border-[#D9E0E8] dark:border-[#2A3648] rounded-[8px] p-4">
                       <div className="flex items-center gap-2 mb-3 text-[#64748B] dark:text-[#94A3B8]">
-                        <Laptop className="w-4 h-4"/>
+                        <Laptop className="w-4 h-4" />
                         <span className="text-[12px] font-semibold uppercase tracking-wider">Laptop</span>
                       </div>
                       <div className="text-[14px] text-[#172033] dark:text-[#F1F5F9] font-medium leading-relaxed">
@@ -476,7 +484,7 @@ export function GateMonitor() {
                     {/* Books */}
                     <div className="bg-white dark:bg-[#111827] border border-[#D9E0E8] dark:border-[#2A3648] rounded-[8px] p-4">
                       <div className="flex items-center gap-2 mb-3 text-[#64748B] dark:text-[#94A3B8]">
-                        <BookOpen className="w-4 h-4"/>
+                        <BookOpen className="w-4 h-4" />
                         <span className="text-[12px] font-semibold uppercase tracking-wider">Books</span>
                         {books.length > 0 && <span className="ml-auto text-[12px] font-semibold">{books.length}</span>}
                       </div>
@@ -494,7 +502,7 @@ export function GateMonitor() {
                     {/* Gadgets */}
                     <div className="bg-white dark:bg-[#111827] border border-[#D9E0E8] dark:border-[#2A3648] rounded-[8px] p-4">
                       <div className="flex items-center gap-2 mb-3 text-[#64748B] dark:text-[#94A3B8]">
-                        <Headphones className="w-4 h-4"/>
+                        <Headphones className="w-4 h-4" />
                         <span className="text-[12px] font-semibold uppercase tracking-wider">Gadget</span>
                         {gadgets.length > 0 && <span className="ml-auto text-[12px] font-semibold">{gadgets.length}</span>}
                       </div>
@@ -533,13 +541,13 @@ export function GateMonitor() {
                   Auto-clears in {Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}
                 </span>
                 <div className="flex-1 h-[4px] bg-[#D9E0E8] dark:bg-[#2A3648] rounded-full overflow-hidden max-w-[200px]">
-                  <div 
+                  <div
                     className={`h-full transition-all duration-1000 ease-linear rounded-full ${statusBgClass}`}
                     style={{ width: `${(countdown / RESET_TIMEOUT_SECONDS) * 100}%` }}
                   ></div>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={clearCurrentScan}
                 className="text-[13px] font-medium text-[#2563EB] dark:text-[#60A5FA] hover:underline"
               >
@@ -601,11 +609,11 @@ export function GateMonitor() {
         <div className="flex items-center gap-2 font-medium">
           <span>Developers' Society X TSG initiative</span>
         </div>
-        
+
         <div className="flex items-center gap-4">
           <div className="relative group">
             <button className="hover:text-[#172033] dark:hover:text-[#F1F5F9] transition-colors flex items-center gap-1.5">
-               <QrCode className="w-3.5 h-3.5" /> Simulation
+              <QrCode className="w-3.5 h-3.5" /> Simulation
             </button>
             <div className="absolute bottom-full right-0 mb-2 hidden group-hover:flex flex-col gap-1 p-2 rounded-[8px] bg-white dark:bg-[#111827] border border-[#D9E0E8] dark:border-[#2A3648] shadow-lg w-40">
               <button onClick={() => handleSimulate("normal_entry")} className="text-left px-3 py-2 rounded-[6px] hover:bg-[#F5F7FA] dark:hover:bg-[#1E293B] text-[13px] text-[#172033] dark:text-[#F1F5F9]">Normal Entry</button>
@@ -644,18 +652,18 @@ export function GateMonitor() {
                   const isExpanded = expandedIds.has(scan.id);
                   const isSuccessLog = scan.status === "ALLOWED";
                   return (
-                    <div 
-                      key={scan.id} 
-                      onClick={() => setExpandedIds(prev => { const n = new Set(prev); if(n.has(scan.id)) n.delete(scan.id); else n.add(scan.id); return n; })}
+                    <div
+                      key={scan.id}
+                      onClick={() => setExpandedIds(prev => { const n = new Set(prev); if (n.has(scan.id)) n.delete(scan.id); else n.add(scan.id); return n; })}
                       className={`p-4 border-b border-[#D9E0E8] dark:border-[#2A3648] cursor-pointer hover:bg-[#F8FAFC] dark:hover:bg-[#172033] transition-colors ${idx === 0 ? 'bg-[#F8FAFC] dark:bg-[#172033]' : ''}`}
                     >
                       <div className="flex gap-3">
                         <div className="shrink-0 mt-0.5">
-                           {isSuccessLog ? (
-                             scan.mode === 'exit' ? <ArrowRightLeft className="w-4 h-4 text-[#EA580C] dark:text-[#F97316]" /> : <CheckCircle2 className="w-4 h-4 text-[#059669] dark:text-[#10B981]" />
-                           ) : (
-                             <XCircle className="w-4 h-4 text-[#DC2626] dark:text-[#F43F5E]" />
-                           )}
+                          {isSuccessLog ? (
+                            scan.mode === 'exit' ? <ArrowRightLeft className="w-4 h-4 text-[#EA580C] dark:text-[#F97316]" /> : <CheckCircle2 className="w-4 h-4 text-[#059669] dark:text-[#10B981]" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-[#DC2626] dark:text-[#F43F5E]" />
+                          )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2 mb-0.5">

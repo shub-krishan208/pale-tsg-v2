@@ -6,18 +6,19 @@ import path from "path";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    let { token, isSimulation = false, scenario } = body;
+    let { token, mode, isSimulation = false, scenario } = body;
 
     // Support payload passed directly as JSON string or object
-    if (!token && body.raw) {
+    if (body.raw) {
       try {
-        const parsed = JSON.parse(body.raw);
-        token = parsed.token || body.raw;
+        const parsed = typeof body.raw === "string" ? JSON.parse(body.raw) : body.raw;
+        if (!token && parsed.token) token = parsed.token;
+        if (!mode && parsed.mode) mode = parsed.mode;
         if (parsed.isSimulation) {
           isSimulation = true;
         }
       } catch {
-        token = body.raw;
+        if (!token) token = body.raw;
       }
     }
 
@@ -44,14 +45,14 @@ export async function POST(request: Request) {
           success: false,
           status: "DENIED",
           flag: "TOKEN_EXPIRED",
-          mode: "entry",
+          mode: mode || "entry",
           message: "Token has expired. Please regenerate your pass.",
           timestamp: new Date().toISOString(),
         });
       }
 
       const simDirection =
-        body.mode || (token.includes("exit") ? "exit" : "entry");
+        mode || body.mode || (token.includes("exit") ? "exit" : "entry");
 
       return NextResponse.json({
         success: true,
@@ -71,21 +72,21 @@ export async function POST(request: Request) {
     // --- 2. Live Token Verification (Forward to Django Gate Backend) ---
     // The gate backend handles DB persistence and calls process_token logic
     const gateBackendUrl = process.env.GATE_LOCAL_API_URL || "http://gate:8000";
-    
+
     const res = await fetch(`${gateBackendUrl}/api/process_scan/`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token, mode: body.mode || "entry" }),
+      body: JSON.stringify({ token, mode: mode || "entry" }),
     });
 
     const data = await res.json();
-    
+
     if (!res.ok || !data.success) {
       return NextResponse.json({
         success: false,
         status: "DENIED",
         flag: data.flag || "ERROR",
-        mode: data.mode || "entry",
+        mode: data.mode || mode || "entry",
         message: data.message || data.error || "Verification failed",
         timestamp: new Date().toISOString(),
       });
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
       success: true,
       status: "ALLOWED",
       flag: data.flag,
-      mode: data.mode,
+      mode: data.mode || mode || "entry",
       roll: data.roll,
       name: data.name,
       laptop: data.laptop,
