@@ -239,9 +239,15 @@ def _parse_date(date_str):
 
 
 def _get_hourly_data_for_date(target_date):
-    """Get hourly breakdown for a specific date object."""
+    """Get hourly breakdown for a specific date object with people_inside calculation."""
     start_of_day = timezone.make_aware(datetime.combine(target_date, time.min))
     end_of_day = timezone.make_aware(datetime.combine(target_date, time.max))
+    
+    # Calculate people inside at 00:00 of target_date
+    start_occupancy = (
+        EntryLog.objects.filter(created_at__lt=start_of_day, status='ENTERED').count() +
+        ExitLog.objects.filter(entry_id__created_at__lt=start_of_day, scanned_at__gte=start_of_day).count()
+    )
     
     hourly_entries = list(
         EntryLog.objects.filter(
@@ -278,7 +284,15 @@ def _get_hourly_data_for_date(target_date):
                 hours_map[hour_str]['exits'] = h['count']
             else:
                 hours_map[hour_str] = {'hour': hour_str, 'entries': 0, 'exits': h['count']}
-    return sorted(hours_map.values(), key=lambda x: x['hour'])
+    
+    sorted_hours = sorted(hours_map.values(), key=lambda x: x['hour'])
+    
+    running_inside = start_occupancy
+    for item in sorted_hours:
+        running_inside = max(0, running_inside + item['entries'] - item['exits'])
+        item['people_inside'] = running_inside
+        
+    return sorted_hours
 
 
 def _get_default_summary_data():

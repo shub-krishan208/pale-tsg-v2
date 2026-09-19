@@ -872,18 +872,35 @@
             }
         }
 
-        // ============ Hourly & Daily Charts (unchanged) ============
         function updateHourlyChart(hourlyData) {
             const ctx = document.getElementById('hourly-chart').getContext('2d');
             
             const labels = hourlyData.map(h => formatHour(h.hour));
             const entries = hourlyData.map(h => h.entries);
             const exits = hourlyData.map(h => h.exits);
+            const peopleInside = hourlyData.map(h => h.people_inside || 0);
 
             if (hourlyChart) {
                 hourlyChart.data.labels = labels;
                 hourlyChart.data.datasets[0].data = entries;
                 hourlyChart.data.datasets[1].data = exits;
+                if (hourlyChart.data.datasets[2]) {
+                    hourlyChart.data.datasets[2].data = peopleInside;
+                } else {
+                    hourlyChart.data.datasets.push({
+                        type: 'line',
+                        label: 'People Inside',
+                        data: peopleInside,
+                        borderColor: 'rgba(96, 165, 250, 0.65)',
+                        backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        fill: true,
+                        tension: 0.35,
+                        order: 1,
+                    });
+                }
                 hourlyChart.update('none');
             } else {
                 hourlyChart = new Chart(ctx, {
@@ -892,16 +909,33 @@
                         labels: labels,
                         datasets: [
                             {
+                                type: 'bar',
                                 label: 'Entries',
                                 data: entries,
                                 backgroundColor: 'rgba(251, 191, 36, 0.8)',
                                 borderRadius: 4,
+                                order: 2,
                             },
                             {
+                                type: 'bar',
                                 label: 'Exits',
                                 data: exits,
                                 backgroundColor: 'rgba(251, 113, 133, 0.8)',
                                 borderRadius: 4,
+                                order: 2,
+                            },
+                            {
+                                type: 'line',
+                                label: 'People Inside',
+                                data: peopleInside,
+                                borderColor: 'rgba(96, 165, 250, 0.65)',
+                                backgroundColor: 'rgba(96, 165, 250, 0.08)',
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                pointHoverRadius: 5,
+                                fill: true,
+                                tension: 0.35,
+                                order: 1,
                             }
                         ]
                     },
