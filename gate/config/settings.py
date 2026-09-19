@@ -6,19 +6,26 @@ BASE_DIR = Path(__file__).resolve().parent.parent      # .../PALE-tsg/gate
 REPO_ROOT = BASE_DIR.parent                           # .../PALE-tsg
 sys.path.insert(0, str(REPO_ROOT))                    # so `import shared` works
 
-#SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-secret-key")
-#DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
-#ALLOWED_HOSTS = ["*"]
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-gate-secret-key-change-in-production")
+DEBUG = os.getenv("DJANGO_DEBUG", "1") == "1"
+ALLOWED_HOSTS = ["*"]
+
+ROOT_URLCONF = "config.urls"
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",
 
-    # local parties
+    # local apps
     "shared.apps.users",
     "shared.apps.entries",
     "scanner.apps.ScannerConfig",
-    
+]
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
 
 DATABASES = {
@@ -28,7 +35,7 @@ DATABASES = {
         'USER': os.environ.get('DB_USER', 'postgres'),
         'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
         'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'PORT': os.environ.get('DB_PORT', '54323'),
+        'PORT': os.environ.get('DB_PORT', '5434'),
     }
 }
 

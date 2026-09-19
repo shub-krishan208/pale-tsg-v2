@@ -8,6 +8,8 @@ services:
         working_dir: /app/gate
         env_file:
             - .env
+        ports:
+            - "8000:8000"
         networks:
             gatenet:
                 ipv4_address: 172.25.0.10
@@ -67,7 +69,7 @@ services:
         image: postgres:16
         container_name: pale-gate-db
         ports:
-            - "54323:5432"
+            - "5434:5432"
         networks:
             gatenet:
                 ipv4_address: 172.25.0.11
@@ -79,7 +81,7 @@ services:
         volumes:
             - postgres-gate-data:/var/lib/postgresql/data
         healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U postgres -d pale_gate_db"]
+            test: [ "CMD-SHELL", "pg_isready -U postgres -d pale_gate_db" ]
             interval: 10s
             timeout: 5s
             retries: 5
