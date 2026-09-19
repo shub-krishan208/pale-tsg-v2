@@ -8,7 +8,7 @@ from django.db.models import Count
 from django.db.models.functions import TruncHour, TruncDate, TruncMonth
 from django.core.cache import cache
 from django.conf import settings
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime, time
 import functools
 import calendar
 
@@ -238,9 +238,53 @@ def _parse_date(date_str):
         return None
 
 
+def _get_hourly_data_for_date(target_date):
+    """Get hourly breakdown for a specific date object."""
+    start_of_day = timezone.make_aware(datetime.combine(target_date, time.min))
+    end_of_day = timezone.make_aware(datetime.combine(target_date, time.max))
+    
+    hourly_entries = list(
+        EntryLog.objects.filter(
+            created_at__gte=start_of_day,
+            created_at__lte=end_of_day,
+            status__in=['ENTERED', 'EXITED', 'EXPIRED']
+        )
+        .annotate(hour=TruncHour('created_at'))
+        .values('hour')
+        .annotate(count=Count('id'))
+        .order_by('hour')
+    )
+    
+    hourly_exits = list(
+        ExitLog.objects.filter(
+            scanned_at__gte=start_of_day,
+            scanned_at__lte=end_of_day
+        )
+        .annotate(hour=TruncHour('scanned_at'))
+        .values('hour')
+        .annotate(count=Count('id'))
+        .order_by('hour')
+    )
+    
+    hours_map = {}
+    for h in hourly_entries:
+        hour_str = h['hour'].isoformat() if h['hour'] else None
+        if hour_str:
+            hours_map[hour_str] = {'hour': hour_str, 'entries': h['count'], 'exits': 0}
+    for h in hourly_exits:
+        hour_str = h['hour'].isoformat() if h['hour'] else None
+        if hour_str:
+            if hour_str in hours_map:
+                hours_map[hour_str]['exits'] = h['count']
+            else:
+                hours_map[hour_str] = {'hour': hour_str, 'entries': 0, 'exits': h['count']}
+    return sorted(hours_map.values(), key=lambda x: x['hour'])
+
+
 def _get_default_summary_data():
     """Get default dashboard summary data (today + hourly + 7d)."""
     now = timezone.localtime()
+    today_date = now.date()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     seven_days_ago = today_start - timedelta(days=7)
     
@@ -258,39 +302,7 @@ def _get_default_summary_data():
     current_inside = EntryLog.objects.filter(status='ENTERED').count()
     
     # Hourly breakdown for today
-    hourly_entries = list(
-        EntryLog.objects.filter(
-            created_at__gte=today_start,
-            status__in=['ENTERED', 'EXITED', 'EXPIRED']
-        )
-        .annotate(hour=TruncHour('created_at'))
-        .values('hour')
-        .annotate(count=Count('id'))
-        .order_by('hour')
-    )
-    
-    hourly_exits = list(
-        ExitLog.objects.filter(scanned_at__gte=today_start)
-        .annotate(hour=TruncHour('scanned_at'))
-        .values('hour')
-        .annotate(count=Count('id'))
-        .order_by('hour')
-    )
-    
-    # Merge hourly data
-    hours_map = {}
-    for h in hourly_entries:
-        hour_str = h['hour'].isoformat() if h['hour'] else None
-        if hour_str:
-            hours_map[hour_str] = {'hour': hour_str, 'entries': h['count'], 'exits': 0}
-    for h in hourly_exits:
-        hour_str = h['hour'].isoformat() if h['hour'] else None
-        if hour_str:
-            if hour_str in hours_map:
-                hours_map[hour_str]['exits'] = h['count']
-            else:
-                hours_map[hour_str] = {'hour': hour_str, 'entries': 0, 'exits': h['count']}
-    hourly_data = sorted(hours_map.values(), key=lambda x: x['hour'])
+    hourly_data = _get_hourly_data_for_date(today_date)
     
     # 7-day trend
     daily_data = _get_daily_data(seven_days_ago.date(), now.date())
@@ -302,6 +314,7 @@ def _get_default_summary_data():
             'exits': today_exits,
             'current_inside': current_inside,
         },
+        'hourly_date': today_date.isoformat(),
         'hourly': hourly_data,
         'daily_7d': daily_data,
     }
@@ -615,7 +628,25 @@ def summary(request):
         return Response(result)
     
     else:
-        # Default view
+        # Default view (or single date hourly view if date parameter passed)
+        hourly_date_str = request.GET.get('hourly_date') or request.GET.get('date')
+        if hourly_date_str:
+            target_date = _parse_date(hourly_date_str)
+            if target_date:
+                cache_key = f'summary_hourly_{target_date.isoformat()}'
+                cached = cache.get(cache_key)
+                if cached:
+                    return Response(cached)
+                
+                result = {
+                    'timestamp': now.isoformat(),
+                    'hourly_date': target_date.isoformat(),
+                    'hourly': _get_hourly_data_for_date(target_date),
+                }
+                ttl = CACHE_TTL_DEFAULT if target_date == now.date() else CACHE_TTL_MONTH
+                cache.set(cache_key, result, ttl)
+                return Response(result)
+
         cache_key = 'summary_default'
         cached = cache.get(cache_key)
         if cached:

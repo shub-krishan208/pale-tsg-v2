@@ -403,13 +403,34 @@
         <div class="{% if is_kiosk %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-2 gap-6 fade-in" style="animation-delay: 0.2s;">
             <!-- Hourly Chart -->
             <div class="stat-card rounded-2xl p-6">
-                <h3 class="text-lg font-semibold mb-4 flex items-center gap-2 text-adaptive">
-                    <svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Today's Hourly Activity
-                </h3>
-                <div class="h-64">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+                    <h3 class="text-lg font-semibold flex items-center gap-2 text-adaptive">
+                        <svg class="w-5 h-5" style="color: var(--accent-violet)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Hourly Activity</span>
+                    </h3>
+                    <div class="flex items-center gap-1.5">
+                        <button id="hourly-prev-day" class="preset-btn flex items-center justify-center p-1.5 cursor-pointer" title="Previous Day">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                        </button>
+                        <input type="date" id="hourly-date-picker" class="date-input text-xs py-1 px-2 font-mono">
+                        <button id="hourly-next-day" class="preset-btn flex items-center justify-center p-1.5 cursor-pointer" title="Next Day">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-xs text-adaptive-muted mb-3 font-medium" id="hourly-date-display">
+                    Today
+                </div>
+                <div class="h-64 relative">
+                    <div id="hourly-chart-loading" class="chart-loading absolute inset-0 hidden">
+                        <div class="spinner"></div>
+                    </div>
                     <canvas id="hourly-chart"></canvas>
                 </div>
             </div>
@@ -606,8 +627,18 @@
         let entryFlagsHist = null;
         let exitFlagsHist = null;
 
+        function toISODateString(d) {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         // State management
         const state = {
+            hourly: {
+                selectedDate: toISODateString(new Date()),
+            },
             trend: {
                 view: 'month',
                 month: new Date().getMonth() + 1,
@@ -734,6 +765,88 @@
             }
         }
 
+        // ============ Hourly Date Controls ============
+        function formatDateDisplay(dateStr) {
+            const todayStr = toISODateString(new Date());
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterdayStr = toISODateString(yesterdayDate);
+
+            const d = new Date(dateStr + 'T00:00:00');
+            const formatted = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+
+            if (dateStr === todayStr) {
+                return `Today (${formatted})`;
+            } else if (dateStr === yesterdayStr) {
+                return `Yesterday (${formatted})`;
+            } else {
+                return formatted;
+            }
+        }
+
+        function updateHourlyDateUI(dateStr) {
+            state.hourly.selectedDate = dateStr;
+            const picker = document.getElementById('hourly-date-picker');
+            if (picker && picker.value !== dateStr) {
+                picker.value = dateStr;
+            }
+            const display = document.getElementById('hourly-date-display');
+            if (display) {
+                display.textContent = formatDateDisplay(dateStr);
+            }
+        }
+
+        async function fetchHourlyDataForDate(dateStr) {
+            const loadingEl = document.getElementById('hourly-chart-loading');
+            if (loadingEl) loadingEl.classList.remove('hidden');
+            try {
+                const data = await fetchApi({ hourly_date: dateStr });
+                if (data.hourly) {
+                    updateHourlyChart(data.hourly);
+                }
+                updateHourlyDateUI(dateStr);
+            } catch (error) {
+                console.error('Failed to fetch hourly data for date:', dateStr, error);
+            } finally {
+                if (loadingEl) loadingEl.classList.add('hidden');
+            }
+        }
+
+        function initHourlyControls() {
+            const todayStr = toISODateString(new Date());
+            state.hourly.selectedDate = todayStr;
+            
+            const picker = document.getElementById('hourly-date-picker');
+            if (picker) {
+                picker.value = todayStr;
+                picker.addEventListener('change', function() {
+                    if (this.value) {
+                        fetchHourlyDataForDate(this.value);
+                    }
+                });
+            }
+
+            const prevBtn = document.getElementById('hourly-prev-day');
+            if (prevBtn) {
+                prevBtn.addEventListener('click', function() {
+                    const current = new Date(state.hourly.selectedDate + 'T00:00:00');
+                    current.setDate(current.getDate() - 1);
+                    fetchHourlyDataForDate(toISODateString(current));
+                });
+            }
+
+            const nextBtn = document.getElementById('hourly-next-day');
+            if (nextBtn) {
+                nextBtn.addEventListener('click', function() {
+                    const current = new Date(state.hourly.selectedDate + 'T00:00:00');
+                    current.setDate(current.getDate() + 1);
+                    fetchHourlyDataForDate(toISODateString(current));
+                });
+            }
+
+            updateHourlyDateUI(todayStr);
+        }
+
         function updateDashboard(data) {
             // Update stats
             document.getElementById('current-inside').textContent = data.today.current_inside;
@@ -750,7 +863,11 @@
 
             // Update charts (only if not kiosk mode)
             if (!IS_KIOSK) {
-                updateHourlyChart(data.hourly);
+                const todayStr = toISODateString(new Date());
+                if (state.hourly.selectedDate === todayStr) {
+                    updateHourlyChart(data.hourly);
+                    updateHourlyDateUI(data.hourly_date || todayStr);
+                }
                 updateDailyChart(data.daily_7d);
             }
         }
@@ -1425,6 +1542,7 @@
 
         // Initialize when not in kiosk mode
         if (!IS_KIOSK) {
+            initHourlyControls();
             initTrendControls();
             initFlagsControls();
             
